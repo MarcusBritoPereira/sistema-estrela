@@ -223,7 +223,7 @@ export default function BillingPage() {
             fetchHistory(historyPeriod);
           }}
           disabled={loading || historyLoading}
-          className="self-start md:self-auto bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-3 rounded-2xl transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2 text-sm disabled:opacity-50"
+          className="self-start md:self-auto min-h-[48px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3.5 rounded-2xl transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 text-sm disabled:opacity-50 cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${(loading || historyLoading) ? "animate-spin" : ""}`} />
           Atualizar Dados
@@ -289,7 +289,7 @@ export default function BillingPage() {
             <div className="flex items-center bg-black/5 dark:bg-[#161616] p-1 rounded-2xl border border-[var(--border-subtle)] shadow-inner">
               <button
                 onClick={() => setHistoryMetric("fat")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                   historyMetric === "fat" ? "bg-blue-600 text-white shadow-md shadow-blue-500/25" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
@@ -297,7 +297,7 @@ export default function BillingPage() {
               </button>
               <button
                 onClick={() => setHistoryMetric("qtd")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                   historyMetric === "qtd" ? "bg-blue-600 text-white shadow-md shadow-blue-500/25" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
@@ -318,7 +318,7 @@ export default function BillingPage() {
                 <button
                   key={p.value}
                   onClick={() => setHistoryPeriod(p.value)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all ${
                     historyPeriod === p.value ? "bg-blue-600 text-white shadow-md shadow-blue-500/25" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                   }`}
                 >
@@ -340,7 +340,7 @@ export default function BillingPage() {
               <button
                 key={dep}
                 onClick={() => toggleCompany(dep)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 border shadow-sm ${
+                className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black transition-all flex items-center gap-2 border shadow-sm cursor-pointer ${
                   isActive
                     ? "bg-white dark:bg-[#1a1a1a] text-[var(--text-main)] border-[var(--border-subtle)] hover:scale-105"
                     : "bg-black/5 dark:bg-white/5 text-[var(--text-muted)] border-transparent opacity-40 line-through hover:opacity-70"
@@ -504,7 +504,7 @@ export default function BillingPage() {
                         step="1000"
                         value={editingLimit[emp.deposito] ?? ""}
                         onChange={(e) => setEditingLimit({ ...editingLimit, [emp.deposito]: e.target.value })}
-                        className="w-full pl-8 pr-3 py-2.5 bg-white dark:bg-[#0A0A0A] border border-[var(--border-subtle)] rounded-xl text-sm font-black text-[var(--text-main)] focus:outline-none focus:border-blue-500 transition-all shadow-sm"
+                        className="w-full pl-8 pr-3 min-h-[48px] bg-white dark:bg-[#0A0A0A] border border-[var(--border-subtle)] rounded-xl text-sm font-black text-[var(--text-main)] focus:outline-none focus:border-blue-500 transition-all shadow-sm"
                         placeholder="Ex: 2500000"
                       />
                     </div>
@@ -513,7 +513,7 @@ export default function BillingPage() {
                   <button
                     onClick={() => handleSaveLimit(emp.deposito)}
                     disabled={savingLimit[emp.deposito]}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold min-h-[48px] rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 text-xs disabled:opacity-50 cursor-pointer"
                   >
                     {savingLimit[emp.deposito] ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />

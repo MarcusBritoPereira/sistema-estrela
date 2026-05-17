@@ -167,7 +167,7 @@ export default function DashboardOverview() {
               <button
                 key={p}
                 onClick={() => setPeriodo(p)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`px-4.5 py-2.5 min-h-[44px] flex items-center justify-center rounded-xl text-xs font-bold transition-all ${
                   periodo === p ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25 scale-105" : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
                 }`}
               >
@@ -189,23 +189,23 @@ export default function DashboardOverview() {
         <>
           {/* AI Insights Card */}
           {insights.length > 0 && (
-            <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-slate-900/40 dark:from-blue-900/40 dark:via-indigo-900/30 dark:to-purple-900/40 border border-blue-500/30 rounded-3xl p-6 relative overflow-hidden shadow-2xl backdrop-blur-xl">
+            <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-blue-900/40 dark:via-indigo-900/30 dark:to-slate-900/40 border border-blue-500/30 rounded-3xl p-6 lg:p-8 relative overflow-hidden shadow-xl backdrop-blur-xl transition-all duration-300">
               <div className="absolute -right-10 -bottom-10 opacity-10 transform rotate-12 pointer-events-none">
-                <TrendingUp className="w-64 h-64 text-blue-400" />
+                <TrendingUp className="w-64 h-64 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="relative z-10 flex items-start gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-2xl shadow-lg mt-0.5">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3.5 rounded-2xl shadow-lg mt-0.5 shrink-0">
                   <Sparkles className="h-6 w-6 text-white animate-pulse" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-black text-[var(--text-main)] mb-2 flex items-center gap-2">
                     IA Analítica: Insights Automatizados
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-4">
                     {insights.map((insight, idx) => (
-                      <div key={idx} className="bg-black/40 border border-white/10 rounded-2xl p-3.5 text-xs text-blue-100 font-medium flex items-start gap-2.5 hover:bg-black/60 transition-colors shadow-inner">
-                        <span className="text-base font-bold leading-none">{insight.substring(0, 2)}</span>
-                        <span className="flex-1">{insight.substring(2)}</span>
+                      <div key={idx} className="bg-white/90 dark:bg-black/40 border border-[var(--border-subtle)] dark:border-white/10 rounded-2xl p-4 text-xs text-[var(--text-main)] dark:text-blue-100 font-bold flex items-start gap-3 hover:bg-white dark:hover:bg-black/60 transition-all shadow-sm">
+                        <span className="text-lg font-black leading-none">{insight.substring(0, 2)}</span>
+                        <span className="flex-1 leading-relaxed font-semibold">{insight.substring(2)}</span>
                       </div>
                     ))}
                   </div>
