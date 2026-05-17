@@ -331,8 +331,8 @@ export default function CustomersPage() {
 
       {/* Drawer / Modal: Ficha do Cliente */}
       {selectedCgc && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-end animate-in fade-in duration-300">
-          <div className="w-full max-w-4xl h-full bg-[var(--bg-root)] shadow-2xl flex flex-col overflow-hidden transform transition-transform duration-300 slide-in-from-right border-l border-[var(--border-subtle)]">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 lg:p-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-[96vw] h-[95vh] bg-[var(--bg-root)] border border-[var(--border-subtle)] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform transition-all duration-300 animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-6 lg:p-8 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent border-b border-[var(--border-subtle)] flex items-start justify-between gap-4">
               <div className="space-y-1">
