@@ -9,7 +9,11 @@ export class DashboardController {
 
   @Get('kpis')
   @ApiOperation({ summary: 'Get main KPIs for dashboard' })
-  @ApiQuery({ name: 'periodo', required: false, description: 'Days period (default: 30)' })
+  @ApiQuery({
+    name: 'periodo',
+    required: false,
+    description: 'Days period (default: 30)',
+  })
   async getKpis(@Query('periodo') periodo = '30') {
     return this.dashboardService.getKpis(periodo);
   }
@@ -43,12 +47,30 @@ export class DashboardController {
     @Query('periodo') periodo = '30',
     @Query('top') top = '10',
   ) {
-    return this.dashboardService.getProdutosMaisVendidos(parseInt(periodo, 10), parseInt(top, 10));
+    return this.dashboardService.getProdutosMaisVendidos(
+      parseInt(periodo, 10),
+      parseInt(top, 10),
+    );
   }
 
   @Get('insights')
   @ApiOperation({ summary: 'Get automatic AI-driven insights from real data' })
   async getInsights() {
     return this.dashboardService.getInsightsAutomaticos();
+  }
+
+  @Get('executive-overview')
+  @ApiOperation({ summary: 'Get five-pillar executive intelligence overview' })
+  @ApiQuery({ name: 'periodo', required: false })
+  async getExecutiveOverview(@Query('periodo') periodo = '30') {
+    return this.dashboardService.getExecutiveOverview(parseInt(periodo, 10));
+  }
+
+  @Get('executive-alerts')
+  @ApiOperation({
+    summary: 'Get automatic operational, commercial and strategic alerts',
+  })
+  async getExecutiveAlerts() {
+    return this.dashboardService.getExecutiveAlerts();
   }
 }

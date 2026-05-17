@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { ArrowDownRight, ArrowUpRight, DollarSign, Package, ShoppingCart, TrendingUp, Users, Loader2, Sparkles, Trophy, Award } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, DollarSign, Package, ShoppingCart, Target, TrendingUp, Users, Loader2, Sparkles, Trophy, Award } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -46,6 +46,51 @@ interface ProdutoMaisVendido {
   precoMedio: number;
 }
 
+interface ExecutiveOverview {
+  periodoDias: number;
+  pilares: {
+    comercial: {
+      faturamento: number;
+      crescimentoPercentual: number;
+      pedidos: number;
+      ticketMedio: number;
+      mixMedioProdutosPorPedido: number;
+      vendedoresAtivos: number;
+    };
+    clientes: {
+      ativos: number;
+      novosOuRecuperados: number;
+      emRisco: number;
+      perdidos: number;
+      curvaABC: { A: number; B: number; C: number };
+    };
+    produtos: {
+      produtosVendidos: number;
+      unidadesVendidas: number;
+      curvaABC: { A: number; B: number; C: number };
+    };
+    financeiro: {
+      lucroBrutoAproximado: number;
+      margemBrutaPercentual: number;
+      cmvAproximado: number;
+      limitacoes: string[];
+    };
+    operacaoLogistica: {
+      status: string;
+      disponivelAgora: string[];
+      pendenteMapeamento: string[];
+    };
+  };
+}
+
+interface ExecutiveAlert {
+  type: string;
+  severity: "critical" | "warning" | "info";
+  title: string;
+  description: string;
+  action: string;
+}
+
 export default function DashboardOverview() {
   const [periodo, setPeriodo] = useState<string>("30");
   const [loading, setLoading] = useState<boolean>(true);
@@ -54,6 +99,8 @@ export default function DashboardOverview() {
   const [ranking, setRanking] = useState<RankingVendedor[]>([]);
   const [produtos, setProdutos] = useState<ProdutoMaisVendido[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
+  const [executiveOverview, setExecutiveOverview] = useState<ExecutiveOverview | null>(null);
+  const [executiveAlerts, setExecutiveAlerts] = useState<ExecutiveAlert[]>([]);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -61,12 +108,14 @@ export default function DashboardOverview() {
       setLoading(true);
       try {
         const baseURL = "http://localhost:3000/dashboard";
-        const [resKpis, resMes, resRanking, resProd, resInsights] = await Promise.all([
+        const [resKpis, resMes, resRanking, resProd, resInsights, resExecutive, resAlerts] = await Promise.all([
           axios.get<Kpis>(`${baseURL}/kpis?periodo=${periodo}`),
           axios.get<VendaMes[]>(`${baseURL}/vendas-mes?meses=6`),
           axios.get<RankingVendedor[]>(`${baseURL}/ranking-vendedores?periodo=${periodo}`),
           axios.get<ProdutoMaisVendido[]>(`${baseURL}/produtos-mais-vendidos?periodo=${periodo}&top=5`),
           axios.get<string[]>(`${baseURL}/insights`),
+          axios.get<ExecutiveOverview>(`${baseURL}/executive-overview?periodo=${periodo}`),
+          axios.get<ExecutiveAlert[]>(`${baseURL}/executive-alerts`),
         ]);
 
         setKpis(resKpis.data);
@@ -74,6 +123,8 @@ export default function DashboardOverview() {
         setRanking(resRanking.data);
         setProdutos(resProd.data);
         setInsights(resInsights.data);
+        setExecutiveOverview(resExecutive.data);
+        setExecutiveAlerts(resAlerts.data);
       } catch (error) {
         console.error("Erro ao carregar dados do BI:", error);
       } finally {
@@ -151,6 +202,88 @@ export default function DashboardOverview() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          {/* Executive Command Center */}
+          {executiveOverview && (
+            <div className="grid gap-6 xl:grid-cols-3">
+              <div className="xl:col-span-2 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-[var(--shadow-card)]">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
+                      <Target className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      Centro de Inteligência Executiva
+                    </h3>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">Leitura dos 5 pilares com dados reais disponíveis no SQL Server.</p>
+                  </div>
+                  <span className="px-3 py-1.5 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400 text-xs font-black border border-blue-500/20">
+                    Janela: {executiveOverview.periodoDias} dias
+                  </span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    {
+                      title: "Comercial",
+                      value: formatCurrency(executiveOverview.pilares.comercial.faturamento),
+                      meta: `${executiveOverview.pilares.comercial.crescimentoPercentual}% vs. período anterior`,
+                    },
+                    {
+                      title: "Clientes",
+                      value: executiveOverview.pilares.clientes.ativos.toLocaleString("pt-BR"),
+                      meta: `${executiveOverview.pilares.clientes.emRisco} em risco • ${executiveOverview.pilares.clientes.novosOuRecuperados} novos/recuperados`,
+                    },
+                    {
+                      title: "Produtos",
+                      value: executiveOverview.pilares.produtos.produtosVendidos.toLocaleString("pt-BR"),
+                      meta: `${executiveOverview.pilares.produtos.unidadesVendidas.toLocaleString("pt-BR")} unidades vendidas`,
+                    },
+                    {
+                      title: "Financeiro",
+                      value: `${executiveOverview.pilares.financeiro.margemBrutaPercentual}% margem`,
+                      meta: `${formatCurrency(executiveOverview.pilares.financeiro.lucroBrutoAproximado)} lucro bruto aprox.`,
+                    },
+                    {
+                      title: "Operação & Logística",
+                      value: "Parcial",
+                      meta: executiveOverview.pilares.operacaoLogistica.disponivelAgora.join(" • "),
+                    },
+                    {
+                      title: "Curva ABC",
+                      value: `P:${executiveOverview.pilares.produtos.curvaABC.A}/${executiveOverview.pilares.produtos.curvaABC.B}/${executiveOverview.pilares.produtos.curvaABC.C}`,
+                      meta: `C:${executiveOverview.pilares.clientes.curvaABC.A}/${executiveOverview.pilares.clientes.curvaABC.B}/${executiveOverview.pilares.clientes.curvaABC.C}`,
+                    },
+                  ].map((pillar) => (
+                    <div key={pillar.title} className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.03] dark:bg-white/[0.03] p-4">
+                      <p className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">{pillar.title}</p>
+                      <p className="mt-2 text-lg font-black text-[var(--text-main)]">{pillar.value}</p>
+                      <p className="mt-1 text-xs font-semibold text-[var(--text-muted)] line-clamp-2">{pillar.meta}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-[var(--shadow-card)]">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-lg font-black text-[var(--text-main)]">Alertas Automáticos</h3>
+                </div>
+                <div className="space-y-3 max-h-[330px] overflow-auto pr-1">
+                  {executiveAlerts.slice(0, 6).map((alert, idx) => (
+                    <div key={`${alert.title}-${idx}`} className={`rounded-2xl border p-3 ${alert.severity === "critical" ? "border-red-500/30 bg-red-500/10" : alert.severity === "warning" ? "border-amber-500/30 bg-amber-500/10" : "border-blue-500/30 bg-blue-500/10"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] uppercase tracking-wider font-black text-[var(--text-muted)]">{alert.type}</span>
+                        <span className="text-[10px] uppercase font-black">{alert.severity}</span>
+                      </div>
+                      <p className="text-sm font-black text-[var(--text-main)] mt-1">{alert.title}</p>
+                      <p className="text-xs font-medium text-[var(--text-muted)] mt-1">{alert.description}</p>
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-2">Ação: {alert.action}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

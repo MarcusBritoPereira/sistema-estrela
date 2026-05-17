@@ -15,12 +15,19 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('ask')
-  @ApiOperation({ summary: 'Process natural language query and return DB analytical response' })
+  @ApiOperation({
+    summary: 'Process natural language query and return DB analytical response',
+  })
   async ask(@Body() body: AskDto) {
     if (!body.question || !body.question.trim()) {
-      return { response: 'Por favor, digite uma pergunta para que eu possa analisar os dados.' };
+      return {
+        response:
+          'Por favor, digite uma pergunta para que eu possa analisar os dados.',
+      };
     }
-    const response = await this.aiService.processNaturalLanguageQuery(body.question);
+    const response = await this.aiService.processNaturalLanguageQuery(
+      body.question,
+    );
     return { response };
   }
 }
