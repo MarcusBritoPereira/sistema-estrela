@@ -1,7 +1,17 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import * as sql from 'mssql';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const SITUACAO_FATURADO = "'2'";
+
+const COMPANY_MAP: Record<number, { name: string; cnpj: string; defaultLimit: number }> = {
+  1: { name: 'M L Munhoz Ltda', cnpj: '21.262.197/0001-07', defaultLimit: 2000000 },
+  2: { name: 'Globo Distribuidora', cnpj: '09.369.910/0001-10', defaultLimit: 2000000 },
+  3: { name: 'Mundial Distribuidora', cnpj: '09.408.077/0001-70', defaultLimit: 2000000 },
+  4: { name: 'A C Veras Ltda', cnpj: '21.243.849/0001-66', defaultLimit: 2000000 },
+  6: { name: 'Premium Distribuidora', cnpj: '55.401.528/0001-64', defaultLimit: 5000000 },
+};
 
 @Injectable()
 export class ReportsService {
@@ -121,5 +131,94 @@ export class ReportsService {
       ORDER BY faturamentoTotal DESC
     `);
     return result.recordset;
+  }
+
+  private getLimitsFilePath(): string {
+    const dataDir = path.resolve(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    return path.join(dataDir, 'cnpj_limits.json');
+  }
+
+  private getStoredLimits(): Record<number, number> {
+    const filePath = this.getLimitsFilePath();
+    if (fs.existsSync(filePath)) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        return JSON.parse(content);
+      } catch (err) {
+        console.error('Falha ao ler arquivo de limites de CNPJ', err);
+      }
+    }
+    const defaultLimits: Record<number, number> = {};
+    for (const dep of Object.keys(COMPANY_MAP)) {
+      defaultLimits[Number(dep)] = COMPANY_MAP[Number(dep)].defaultLimit;
+    }
+    return defaultLimits;
+  }
+
+  async saveCnpjLimit(deposito: number, limite: number): Promise<{ success: boolean }> {
+    if (!COMPANY_MAP[deposito]) {
+      throw new HttpException('Depósito/CNPJ não encontrado', HttpStatus.BAD_REQUEST);
+    }
+    const limits = this.getStoredLimits();
+    limits[deposito] = Number(limite);
+    const filePath = this.getLimitsFilePath();
+    fs.writeFileSync(filePath, JSON.stringify(limits, null, 2), 'utf-8');
+    return { success: true };
+  }
+
+  async getFaturamentoCnpj() {
+    const limits = this.getStoredLimits();
+    const result = await this.pool.request().query(`
+      SELECT
+        Deposito,
+        COUNT(*) as qtdNotas,
+        ISNULL(SUM(ValTotal), 0) as faturamentoMensal
+      FROM NFSAIDA
+      WHERE DT_Data >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
+        AND Situacao = '2'
+      GROUP BY Deposito
+    `);
+
+    const queryMap: Record<number, { faturamento: number; qtd: number }> = {};
+    result.recordset.forEach((r) => {
+      queryMap[r.Deposito] = {
+        faturamento: Number(r.faturamentoMensal || 0),
+        qtd: Number(r.qtdNotas || 0),
+      };
+    });
+
+    const empresas = Object.keys(COMPANY_MAP).map((k) => {
+      const dep = Number(k);
+      const info = COMPANY_MAP[dep];
+      const fat = queryMap[dep] ? queryMap[dep].faturamento : 0;
+      const qtd = queryMap[dep] ? queryMap[dep].qtd : 0;
+      const limite = limits[dep] || info.defaultLimit;
+      const folegoRestante = Math.max(0, limite - fat);
+      const percentual = limite > 0 ? (fat / limite) * 100 : 0;
+
+      return {
+        deposito: dep,
+        nome: info.name,
+        cnpj: info.cnpj,
+        faturamentoMensal: fat,
+        qtdNotas: qtd,
+        limiteMensal: limite,
+        folegoRestante: folegoRestante,
+        percentualAtingido: Number(percentual.toFixed(1)),
+      };
+    });
+
+    const faturamentoTotalGrupo = empresas.reduce((acc, curr) => acc + curr.faturamentoMensal, 0);
+    const folegoTotalGrupo = empresas.reduce((acc, curr) => acc + curr.folegoRestante, 0);
+
+    return {
+      mesAtual: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      faturamentoTotalGrupo,
+      folegoTotalGrupo,
+      empresas,
+    };
   }
 }

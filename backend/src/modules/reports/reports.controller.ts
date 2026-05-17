@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
@@ -69,5 +69,17 @@ export class ReportsController {
       endDate,
     );
     return data;
+  }
+
+  @Get('faturamento-cnpj')
+  @ApiOperation({ summary: 'Get monthly sales consolidation per CNPJ/Deposit' })
+  async getFaturamentoCnpj() {
+    return this.reportsService.getFaturamentoCnpj();
+  }
+
+  @Post('faturamento-cnpj/limite')
+  @ApiOperation({ summary: 'Update monthly sales cap for a specific CNPJ' })
+  async updateLimiteCnpj(@Body() body: { deposito: number; limite: number }) {
+    return this.reportsService.saveCnpjLimit(body.deposito, body.limite);
   }
 }
