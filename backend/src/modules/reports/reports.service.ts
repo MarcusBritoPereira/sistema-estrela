@@ -221,4 +221,71 @@ export class ReportsService {
       empresas,
     };
   }
+
+  async getFaturamentoHistorico(period: string = '6m') {
+    let dateFilter = "DATEADD(MONTH, -5, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))";
+    if (period === '12m') {
+      dateFilter = "DATEADD(MONTH, -11, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))";
+    } else if (period === '2026') {
+      dateFilter = "'2026-01-01 00:00:00'";
+    } else if (period === '2025') {
+      dateFilter = "'2025-01-01 00:00:00'";
+    } else if (period === '2024') {
+      dateFilter = "'2024-01-01 00:00:00'";
+    } else if (period === '2023') {
+      dateFilter = "'2023-01-01 00:00:00'";
+    }
+
+    let yearMaxFilter = "";
+    if (period === '2025') yearMaxFilter = " AND DT_Data <= '2025-12-31 23:59:59'";
+    if (period === '2024') yearMaxFilter = " AND DT_Data <= '2024-12-31 23:59:59'";
+    if (period === '2023') yearMaxFilter = " AND DT_Data <= '2023-12-31 23:59:59'";
+
+    const query = `
+      SELECT
+        YEAR(DT_Data) as ano,
+        MONTH(DT_Data) as mes,
+        Deposito,
+        COUNT(*) as qtdNotas,
+        ISNULL(SUM(ValTotal), 0) as faturamento
+      FROM NFSAIDA
+      WHERE Situacao = '2'
+        AND DT_Data >= ${dateFilter} ${yearMaxFilter}
+      GROUP BY YEAR(DT_Data), MONTH(DT_Data), Deposito
+      ORDER BY ano, mes, Deposito
+    `;
+
+    const result = await this.pool.request().query(query);
+
+    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const mapMeses: Record<string, any> = {};
+
+    result.recordset.forEach((r) => {
+      const key = `${mesesNomes[r.mes - 1]}/${r.ano}`;
+      if (!mapMeses[key]) {
+        mapMeses[key] = {
+          mesAno: key,
+          ano: r.ano,
+          mes: r.mes,
+          dep_1_fat: 0,
+          dep_1_qtd: 0,
+          dep_2_fat: 0,
+          dep_2_qtd: 0,
+          dep_3_fat: 0,
+          dep_3_qtd: 0,
+          dep_4_fat: 0,
+          dep_4_qtd: 0,
+          dep_6_fat: 0,
+          dep_6_qtd: 0,
+        };
+      }
+      const dep = r.Deposito;
+      if ([1, 2, 3, 4, 6].includes(dep)) {
+        mapMeses[key][`dep_${dep}_fat`] = Number(r.faturamento || 0);
+        mapMeses[key][`dep_${dep}_qtd`] = Number(r.qtdNotas || 0);
+      }
+    });
+
+    return Object.values(mapMeses);
+  }
 }

@@ -82,4 +82,10 @@ export class ReportsController {
   async updateLimiteCnpj(@Body() body: { deposito: number; limite: number }) {
     return this.reportsService.saveCnpjLimit(body.deposito, body.limite);
   }
+
+  @Get('faturamento-historico')
+  @ApiOperation({ summary: 'Get historical monthly sales per CNPJ/Deposit' })
+  async getFaturamentoHistorico(@Query('period') period?: string) {
+    return this.reportsService.getFaturamentoHistorico(period);
+  }
 }
