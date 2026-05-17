@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-root: var(--bg-root);
+  --color-bg-card: var(--bg-card);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+}
+
+:root {
+  /* Default to Dark if no class */
+  --bg-root: #050505;
+  --bg-card: #121212;
+  --bg-sidebar: #0a0a0a;
+  --bg-header: rgba(10, 10, 10, 0.8);
+  --text-main: #ffffff;
+  --text-muted: #9ca3af;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+
+html.dark {
+  --bg-root: #050505;
+  --bg-card: #121212;
+  --bg-sidebar: #0a0a0a;
+  --bg-header: rgba(10, 10, 10, 0.8);
+  --text-main: #ffffff;
+  --text-muted: #9ca3af;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --shadow-card: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+}
+
+html.light {
+  --bg-root: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-sidebar: #f1f5f9;
+  --bg-header: rgba(255, 255, 255, 0.8);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-subtle: rgba(15, 23, 42, 0.1);
+  --border-hover: rgba(15, 23, 42, 0.22);
+  --shadow-card: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+}
+
+body {
+  background-color: var(--bg-root);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
