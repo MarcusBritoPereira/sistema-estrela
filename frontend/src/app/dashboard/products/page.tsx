@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Box, Award, Loader2, Sparkles, Filter } from "lucide-react";
+import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 
 interface ProdutoMaisVendido {
   codProduto: number;
@@ -18,10 +19,12 @@ export default function ProductsPage() {
   const [produtos, setProdutos] = useState<ProdutoMaisVendido[]>([]);
   const [periodo, setPeriodo] = useState("30");
   const [top, setTop] = useState("20");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
+      setError(null);
       try {
         const res = await axios.get<ProdutoMaisVendido[]>(
           `http://localhost:3000/dashboard/produtos-mais-vendidos?periodo=${periodo}&top=${top}`
@@ -29,6 +32,8 @@ export default function ProductsPage() {
         setProdutos(res.data);
       } catch (err) {
         console.error(err);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }
@@ -83,7 +88,9 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <DatabaseErrorAlert message={error} />
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center h-64 space-y-3 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl shadow-xl backdrop-blur-md">
           <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-500 animate-spin" />
           <p className="text-sm font-bold text-[var(--text-muted)] animate-pulse">Lendo Itens e tabela de Produtos no SQL Server...</p>
