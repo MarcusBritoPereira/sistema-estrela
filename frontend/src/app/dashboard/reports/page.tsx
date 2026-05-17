@@ -51,15 +51,25 @@ export default function ReportsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatDataForExport = (data: any[], id: string) => {
     if (id === "faturamento") {
-      return data.map((item) => ({
+      const list = data.map((item) => ({
         "Data": item.data ? new Date(item.data).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "--",
         "Qtd Pedidos Faturados": item.qtdPedidos,
         "Faturamento Total (R$)": Number(item.faturamento).toFixed(2),
         "Ticket Médio (R$)": Number(item.ticketMedio).toFixed(2),
       }));
+      const totalPedidos = data.reduce((acc, curr) => acc + (Number(curr.qtdPedidos) || 0), 0);
+      const totalFat = data.reduce((acc, curr) => acc + (Number(curr.faturamento) || 0), 0);
+      const mediaTicket = totalPedidos > 0 ? totalFat / totalPedidos : 0;
+      list.push({
+        "Data": "TOTAL / MÉDIA",
+        "Qtd Pedidos Faturados": totalPedidos,
+        "Faturamento Total (R$)": totalFat.toFixed(2),
+        "Ticket Médio (R$)": mediaTicket.toFixed(2),
+      });
+      return list;
     }
     if (id === "estoque") {
-      return data.map((item) => ({
+      const list = data.map((item) => ({
         "Código Reduzido": item.codProduto,
         "Descrição do Item": item.nomeProduto,
         "Linha / Família": item.familia,
@@ -67,22 +77,53 @@ export default function ReportsPage() {
         "Preço Médio Negociado (R$)": Number(item.precoMedio).toFixed(2),
         "Faturamento Bruto (R$)": Number(item.faturamento).toFixed(2),
       }));
+      const totalQtd = data.reduce((acc, curr) => acc + (Number(curr.qtdVendida) || 0), 0);
+      const totalFat = data.reduce((acc, curr) => acc + (Number(curr.faturamento) || 0), 0);
+      const precoMedio = totalQtd > 0 ? totalFat / totalQtd : 0;
+      list.push({
+        "Código Reduzido": "TOTAL / MÉDIA",
+        "Descrição do Item": "--",
+        "Linha / Família": "--",
+        "Qtd Total Vendida": totalQtd,
+        "Preço Médio Negociado (R$)": precoMedio.toFixed(2),
+        "Faturamento Bruto (R$)": totalFat.toFixed(2),
+      });
+      return list;
     }
     if (id === "equipe") {
-      return data.map((item) => ({
+      const list = data.map((item) => ({
         "Operador / Vendedor": item.nomeVendedor,
         "Total Pedidos": item.qtdPedidos,
         "Ticket Médio (R$)": Number(item.ticketMedio).toFixed(2),
         "Faturamento Bruto (R$)": Number(item.faturamento).toFixed(2),
       }));
+      const totalPedidos = data.reduce((acc, curr) => acc + (Number(curr.qtdPedidos) || 0), 0);
+      const totalFat = data.reduce((acc, curr) => acc + (Number(curr.faturamento) || 0), 0);
+      const mediaTicket = totalPedidos > 0 ? totalFat / totalPedidos : 0;
+      list.push({
+        "Operador / Vendedor": "TOTAL / MÉDIA",
+        "Total Pedidos": totalPedidos,
+        "Ticket Médio (R$)": mediaTicket.toFixed(2),
+        "Faturamento Bruto (R$)": totalFat.toFixed(2),
+      });
+      return list;
     }
     if (id === "clientes") {
-      return data.map((item) => ({
+      const list = data.map((item) => ({
         "Identificação / Cliente": item.documentoCliente,
         "Pedidos no Período": item.qtdPedidos,
         "Faturamento Acumulado (R$)": Number(item.faturamentoTotal).toFixed(2),
         "Última Movimentação": item.dataUltimaCompra ? new Date(item.dataUltimaCompra).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "--",
       }));
+      const totalPedidos = data.reduce((acc, curr) => acc + (Number(curr.qtdPedidos) || 0), 0);
+      const totalFat = data.reduce((acc, curr) => acc + (Number(curr.faturamentoTotal) || 0), 0);
+      list.push({
+        "Identificação / Cliente": "TOTAL / ACUMULADO",
+        "Pedidos no Período": totalPedidos,
+        "Faturamento Acumulado (R$)": totalFat.toFixed(2),
+        "Última Movimentação": "--",
+      });
+      return list;
     }
     return data;
   };
@@ -146,14 +187,18 @@ export default function ReportsPage() {
 
         const headers = Object.keys(formattedData[0]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const rows = formattedData.map((row: any) => headers.map((h) => String(row[h] ?? "--")));
+        const allRows = formattedData.map((row: any) => headers.map((h) => String(row[h] ?? "--")));
+        const bodyRows = allRows.slice(0, -1);
+        const footRow = allRows[allRows.length - 1];
 
         autoTable(doc, {
           startY: 100,
           head: [headers.map((h) => h.toUpperCase())],
-          body: rows,
+          body: bodyRows,
+          foot: [footRow],
           theme: "grid",
           headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+          footStyles: { fillColor: [30, 58, 138], textColor: 255, fontStyle: "bold" },
           styles: { fontSize: 8, cellPadding: 6 },
           alternateRowStyles: { fillColor: [248, 250, 252] },
         });
