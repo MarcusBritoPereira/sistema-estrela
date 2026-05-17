@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Bot, Database, Sparkles, User, AlertCircle } from "lucide-react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { useTheme } from "@/components/ThemeProvider";
 
 interface Message {
@@ -36,7 +36,7 @@ export default function AIChatPage() {
     setError(null);
 
     try {
-      const response = await axios.post<{ response: string }>("http://localhost:3000/ai/ask", {
+      const response = await api.post<{ response: string }>("/ai/ask", {
         question: queryText,
       });
       

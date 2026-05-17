@@ -16,13 +16,13 @@ export function DatabaseErrorAlert({ message, onRetry }: Props) {
         Conexão com Banco de Dados Real Indisponível
       </h3>
       <p className="text-sm font-semibold text-[var(--text-muted)] mb-6 leading-relaxed max-w-xl mx-auto">
-        {message || "O servidor SQL Server real (192.168.3.64) não pôde ser alcançado. Verifique se você está conectado à VPN ou rede local da Distribuidora Estrela."}
+        {message || "O servidor SQL Server não pôde ser alcançado. Verifique se você está conectado à VPN ou rede autorizada da Distribuidora Estrela."}
       </p>
       <div className="bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-[var(--border-subtle)] inline-block text-left mb-8 text-xs font-mono text-[var(--text-muted)] shadow-inner">
         <div className="flex items-center gap-2 mb-2 font-black text-red-500 dark:text-red-400 uppercase tracking-wider">
           <Server className="w-3.5 h-3.5" /> Detalhes da Conexão Estrita:
         </div>
-        <p className="font-semibold">• Servidor Alvo: 192.168.3.64:1433</p>
+        <p className="font-semibold">• Servidor Alvo: ambiente configurado por variável segura</p>
         <p className="font-semibold">• Banco de Dados: DistribuidoraEstrela</p>
         <p className="font-semibold text-amber-600 dark:text-amber-400 mt-1">• Status: Modo Estrito Ativo (Mocks e Fallbacks desativados)</p>
       </div>

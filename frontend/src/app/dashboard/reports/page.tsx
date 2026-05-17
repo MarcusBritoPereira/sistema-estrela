@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { PieChart, Download, FileSpreadsheet, Sparkles, CheckCircle2, FileText, Table, Calendar, Sliders } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 
@@ -133,10 +133,10 @@ export default function ReportsPage() {
     setFeedback(null);
     try {
       const url = isCustom 
-        ? `http://localhost:3000/reports/${rep.endpoint}?startDate=${startDate}&endDate=${endDate}`
-        : `http://localhost:3000/reports/${rep.endpoint}?dias=${dias}`;
+        ? `/reports/${rep.endpoint}?startDate=${startDate}&endDate=${endDate}`
+        : `/reports/${rep.endpoint}?dias=${dias}`;
 
-      const res = await axios.get(url);
+      const res = await api.get(url);
       const rawData = res.data;
 
       const periodLabel = isCustom ? `${startDate} a ${endDate}` : `Últimos ${dias} dias`;

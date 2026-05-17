@@ -1,3 +1,4 @@
+import { Roles } from '../../common/decorators/roles.decorator';
 import { Controller, Post, Body } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -10,6 +11,7 @@ export class AskDto {
 }
 
 @ApiTags('AI Assistant')
+@Roles('ADMIN', 'DIRETORIA', 'GERENTE')
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}

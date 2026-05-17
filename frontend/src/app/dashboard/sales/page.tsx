@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { BarChart3, Calendar, Loader2, TrendingUp, Sparkles } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
@@ -35,17 +35,17 @@ export default function SalesPage() {
       setLoading(true);
       setError(null);
       try {
-        const baseURL = "http://localhost:3000/dashboard";
+        const baseURL = "/dashboard";
         const [resDia, resMes] = await Promise.all([
-          axios.get<VendaDia[]>(`${baseURL}/vendas-dia?dias=${dias}`),
-          axios.get<VendaMes[]>(`${baseURL}/vendas-mes?meses=12`),
+          api.get<VendaDia[]>(`${baseURL}/vendas-dia?dias=${dias}`),
+          api.get<VendaMes[]>(`${baseURL}/vendas-mes?meses=12`),
         ]);
         setVendasDia(resDia.data);
         setVendasMes(resMes.data);
       } catch (err) {
         console.error(err);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
+        setError((err as any).response?.data?.message || "O servidor SQL Server está temporariamente inalcançável. Verifique sua conexão com a VPN ou rede autorizada da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }

@@ -44,21 +44,40 @@ export class ReportsService {
 
   private getDateWhereClause(
     prefix: string,
-    dias?: number,
     startDate?: string,
     endDate?: string,
   ): string {
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (
-      startDate &&
-      endDate &&
-      dateRegex.test(startDate) &&
-      dateRegex.test(endDate)
-    ) {
-      return `${prefix}DT_Data >= CAST('${startDate} 00:00:00' AS DATETIME) AND ${prefix}DT_Data <= CAST('${endDate} 23:59:59' AS DATETIME)`;
+    if (startDate && endDate) {
+      return `${prefix}DT_Data >= @startDate AND ${prefix}DT_Data <= @endDate`;
     }
-    const d = dias && !isNaN(dias) ? dias : 30;
-    return `${prefix}DT_Data >= DATEADD(DAY, -${d}, GETDATE())`;
+    return `${prefix}DT_Data >= DATEADD(DAY, -@dias, GETDATE())`;
+  }
+
+  private createDateRequest(
+    dias: number = 30,
+    startDate?: string,
+    endDate?: string,
+  ): sql.Request {
+    const request = this.pool.request();
+    request.input('dias', sql.Int, this.sanitizeDays(dias));
+    if (startDate && endDate) {
+      request.input(
+        'startDate',
+        sql.DateTime,
+        new Date(`${startDate}T00:00:00.000Z`),
+      );
+      request.input(
+        'endDate',
+        sql.DateTime,
+        new Date(`${endDate}T23:59:59.999Z`),
+      );
+    }
+    return request;
+  }
+
+  private sanitizeDays(value: number): number {
+    if (!Number.isInteger(value)) return 30;
+    return Math.min(Math.max(value, 1), 730);
   }
 
   async getConsolidadoFaturamento(
@@ -66,8 +85,9 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ) {
-    const dateFilter = this.getDateWhereClause('', dias, startDate, endDate);
-    const result = await this.pool.request().query(`
+    const dateFilter = this.getDateWhereClause('', startDate, endDate);
+    const result = await this.createDateRequest(dias, startDate, endDate)
+      .query(`
       SELECT
         CAST(DT_Data AS DATE) AS data,
         COUNT(DISTINCT Pedido) AS qtdPedidos,
@@ -89,8 +109,9 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ) {
-    const dateFilter = this.getDateWhereClause('p.', dias, startDate, endDate);
-    const result = await this.pool.request().query(`
+    const dateFilter = this.getDateWhereClause('p.', startDate, endDate);
+    const result = await this.createDateRequest(dias, startDate, endDate)
+      .query(`
       SELECT TOP 100
         i.CodRed AS codProduto,
         ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
@@ -116,8 +137,9 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ) {
-    const dateFilter = this.getDateWhereClause('', dias, startDate, endDate);
-    const result = await this.pool.request().query(`
+    const dateFilter = this.getDateWhereClause('', startDate, endDate);
+    const result = await this.createDateRequest(dias, startDate, endDate)
+      .query(`
       SELECT
         ISNULL(UsuCad, 'NÃO INFORMADO') AS nomeVendedor,
         COUNT(DISTINCT Pedido) AS qtdPedidos,
@@ -140,8 +162,9 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ) {
-    const dateFilter = this.getDateWhereClause('p.', dias, startDate, endDate);
-    const result = await this.pool.request().query(`
+    const dateFilter = this.getDateWhereClause('p.', startDate, endDate);
+    const result = await this.createDateRequest(dias, startDate, endDate)
+      .query(`
       SELECT TOP 100
         ISNULL(NULLIF(MAX(c.NOME), ''), ISNULL(CAST(p.CGCCPF AS VARCHAR), 'BALCÃO / CONSUMIDOR FINAL')) AS documentoCliente,
         COUNT(DISTINCT p.Pedido) AS qtdPedidos,
@@ -268,30 +291,37 @@ export class ReportsService {
   }
 
   async getFaturamentoHistorico(period: string = '6m') {
-    let dateFilter =
-      'DATEADD(MONTH, -5, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))';
+    const request = this.pool.request();
+    let startDate: Date;
+    let endDate: Date | undefined;
+    const now = new Date();
+
     if (period === '12m') {
-      dateFilter =
-        'DATEADD(MONTH, -11, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))';
-    } else if (period === '2026') {
-      dateFilter = "'2026-01-01 00:00:00'";
-    } else if (period === '2025') {
-      dateFilter = "'2025-01-01 00:00:00'";
-    } else if (period === '2024') {
-      dateFilter = "'2024-01-01 00:00:00'";
-    } else if (period === '2023') {
-      dateFilter = "'2023-01-01 00:00:00'";
+      startDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1),
+      );
+    } else if (['2026', '2025', '2024', '2023'].includes(period)) {
+      const year = Number(period);
+      startDate = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+      if (year < now.getUTCFullYear()) {
+        endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+      }
+    } else {
+      startDate = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1),
+      );
     }
 
-    let yearMaxFilter = '';
-    if (period === '2025')
-      yearMaxFilter = " AND DT_Data <= '2025-12-31 23:59:59'";
-    if (period === '2024')
-      yearMaxFilter = " AND DT_Data <= '2024-12-31 23:59:59'";
-    if (period === '2023')
-      yearMaxFilter = " AND DT_Data <= '2023-12-31 23:59:59'";
+    request.input('startDate', sql.DateTime, startDate);
+    if (endDate) request.input('endDate', sql.DateTime, endDate);
 
-    const query = `
+    const result = await request.query<{
+      ano: number;
+      mes: number;
+      Deposito: number;
+      qtdNotas: number;
+      faturamento: number;
+    }>(`
       SELECT
         YEAR(DT_Data) as ano,
         MONTH(DT_Data) as mes,
@@ -300,18 +330,11 @@ export class ReportsService {
         ISNULL(SUM(ValTotal), 0) as faturamento
       FROM NFSAIDA
       WHERE Situacao = '2'
-        AND DT_Data >= ${dateFilter} ${yearMaxFilter}
+        AND DT_Data >= @startDate
+        ${endDate ? 'AND DT_Data <= @endDate' : ''}
       GROUP BY YEAR(DT_Data), MONTH(DT_Data), Deposito
       ORDER BY ano, mes, Deposito
-    `;
-
-    const result = await this.pool.request().query<{
-      ano: number;
-      mes: number;
-      Deposito: number;
-      qtdNotas: number;
-      faturamento: number;
-    }>(query);
+    `);
 
     const mesesNomes = [
       'Jan',

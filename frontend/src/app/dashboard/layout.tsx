@@ -1,14 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BarChart3, Box, Home, LogOut, MessageSquare, PieChart, Settings, Users, Sun, Moon, Building2, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
+import { AuthUser, clearAuthSession, getAccessToken, getAuthUser } from "@/lib/auth";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+    setUser(getAuthUser());
+    setAuthChecked(true);
+  }, [router]);
+
+  const handleLogout = () => {
+    clearAuthSession();
+    router.replace("/login");
+  };
 
   const navigation = [
     { name: "Visão Geral", href: "/dashboard", icon: Home },
@@ -20,6 +39,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Relatórios", href: "/dashboard/reports", icon: PieChart },
     { name: "IA Assistant", href: "/dashboard/ai", icon: MessageSquare },
   ];
+
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-root)] text-[var(--text-main)] flex items-center justify-center">
+        <div className="h-8 w-8 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-root)] text-[var(--text-main)] flex transition-colors duration-300">
@@ -60,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             Configurações
           </button>
           <button 
-            onClick={() => router.push("/login")}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-bold text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-colors"
           >
             <LogOut className="h-5 w-5 text-red-500" />
@@ -99,11 +127,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
 
             <div className="hidden md:flex flex-col items-end">
-              <span className="text-sm font-bold text-[var(--text-main)]">Marcus Pereira</span>
-              <span className="text-xs font-semibold text-[var(--text-muted)]">Administrador</span>
+              <span className="text-sm font-bold text-[var(--text-main)]">{user?.name || "Usuário autenticado"}</span>
+              <span className="text-xs font-semibold text-[var(--text-muted)]">{user?.role || "Perfil autorizado"}</span>
             </div>
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center border border-white/20 shadow-md">
-              <span className="text-sm font-black text-white">MP</span>
+              <span className="text-sm font-black text-white">{user?.name?.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "BI"}</span>
             </div>
           </div>
         </header>

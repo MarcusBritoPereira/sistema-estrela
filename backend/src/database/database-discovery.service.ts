@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable, Inject } from '@nestjs/common';
 import * as sql from 'mssql';
+import { assertSqlIdentifier, clampInteger } from '../common/sql/sql-safety';
 
 export interface TableInfo {
   tableName: string;
@@ -35,40 +36,40 @@ export class DatabaseDiscoveryService {
     const tables: TableInfo[] = [];
 
     for (const row of result.recordset) {
-      const columns = await this.getColumns(row.tableName, row.schema);
+      const schema = assertSqlIdentifier(row.schema, 'Schema');
+      const tableName = assertSqlIdentifier(row.tableName, 'Tabela');
+      const columns = await this.getColumns(tableName, schema);
       let rowCount = 0;
       try {
         const countRes = await this.pool
           .request()
-          .query(
-            `SELECT COUNT(1) AS cnt FROM [${row.schema}].[${row.tableName}]`,
-          );
+          .query(`SELECT COUNT(1) AS cnt FROM [${schema}].[${tableName}]`);
         rowCount = countRes.recordset[0].cnt;
       } catch {
         rowCount = -1;
       }
 
-      tables.push({
-        tableName: row.tableName,
-        schema: row.schema,
-        rowCount,
-        columns,
-      });
+      tables.push({ tableName, schema, rowCount, columns });
     }
 
     return tables;
   }
 
   async getColumns(tableName: string, schema = 'dbo'): Promise<ColumnInfo[]> {
-    const result = await this.pool.request().query(`
+    const safeTable = assertSqlIdentifier(tableName, 'Tabela');
+    const safeSchema = assertSqlIdentifier(schema, 'Schema');
+    const result = await this.pool
+      .request()
+      .input('tableName', sql.NVarChar, safeTable)
+      .input('schema', sql.NVarChar, safeSchema).query(`
       SELECT 
         COLUMN_NAME as columnName,
         DATA_TYPE as dataType,
         IS_NULLABLE as isNullable,
         CHARACTER_MAXIMUM_LENGTH as maxLength
       FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE TABLE_NAME = '${tableName}'
-        AND TABLE_SCHEMA = '${schema}'
+      WHERE TABLE_NAME = @tableName
+        AND TABLE_SCHEMA = @schema
       ORDER BY ORDINAL_POSITION
     `);
 
@@ -81,14 +82,13 @@ export class DatabaseDiscoveryService {
   }
 
   async previewTable(tableName: string, schema = 'dbo', top = 10) {
+    const safeTable = assertSqlIdentifier(tableName, 'Tabela');
+    const safeSchema = assertSqlIdentifier(schema, 'Schema');
+    const safeTop = clampInteger(top, 1, 100);
     const result = await this.pool
       .request()
-      .query(`SELECT TOP ${top} * FROM [${schema}].[${tableName}]`);
-    return result.recordset;
-  }
-
-  async runQuery(query: string) {
-    const result = await this.pool.request().query(query);
+      .input('top', sql.Int, safeTop)
+      .query(`SELECT TOP (@top) * FROM [${safeSchema}].[${safeTable}]`);
     return result.recordset;
   }
 }

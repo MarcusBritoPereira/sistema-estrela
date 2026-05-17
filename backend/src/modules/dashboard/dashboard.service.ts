@@ -11,17 +11,28 @@ export class DashboardService {
     @Inject('DATABASE_CONNECTION') private pool: sql.ConnectionPool,
   ) {}
 
-  async getKpis(periodo: string = '30') {
-    const dias = parseInt(periodo, 10);
+  private sanitizeMonths(value: number): number {
+    if (!Number.isInteger(value)) return 12;
+    return Math.min(Math.max(value, 1), 60);
+  }
 
-    const kpisResult = await this.pool.request().query(`
+  private sanitizeTop(value: number): number {
+    if (!Number.isInteger(value)) return 10;
+    return Math.min(Math.max(value, 1), 100);
+  }
+
+  async getKpis(periodo: number = 30) {
+    const dias = this.sanitizeDays(periodo);
+
+    const kpisResult = await this.pool.request().input('dias', sql.Int, dias)
+      .query(`
       SELECT
         COUNT(DISTINCT Pedido) AS totalPedidos,
         ISNULL(SUM(ValTotal), 0) AS faturamentoTotal,
         ISNULL(AVG(ValTotal), 0) AS ticketMedio,
         ISNULL(SUM(Lucro), 0) AS lucroTotal
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
     `);
@@ -36,10 +47,12 @@ export class DashboardService {
         AND ValTotal > 0
     `);
 
-    const clientesResult = await this.pool.request().query(`
+    const clientesResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias).query(`
       SELECT COUNT(DISTINCT CGCCPF) AS totalClientes
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND CGCCPF IS NOT NULL
     `);
@@ -95,13 +108,15 @@ export class DashboardService {
   }
 
   async getVendasPorDia(dias: number = 30) {
-    const result = await this.pool.request().query(`
+    const result = await this.pool
+      .request()
+      .input('dias', sql.Int, this.sanitizeDays(dias)).query(`
       SELECT
         CAST(DT_Data AS DATE) AS data,
         COUNT(DISTINCT Pedido) AS qtdPedidos,
         ISNULL(SUM(ValTotal), 0) AS faturamento
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
         AND DT_Data IS NOT NULL
@@ -112,7 +127,9 @@ export class DashboardService {
   }
 
   async getVendasPorMes(meses: number = 12) {
-    const result = await this.pool.request().query(`
+    const result = await this.pool
+      .request()
+      .input('meses', sql.Int, this.sanitizeMonths(meses)).query(`
       SELECT
         YEAR(DT_Data) AS ano,
         MONTH(DT_Data) AS mes,
@@ -121,7 +138,7 @@ export class DashboardService {
         ISNULL(SUM(ValTotal), 0) AS faturamento,
         ISNULL(SUM(Lucro), 0) AS lucro
       FROM Pedido
-      WHERE DT_Data >= DATEADD(MONTH, -${meses}, GETDATE())
+      WHERE DT_Data >= DATEADD(MONTH, -@meses, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
         AND DT_Data IS NOT NULL
@@ -132,7 +149,9 @@ export class DashboardService {
   }
 
   async getRankingVendedores(periodo: number = 30) {
-    const result = await this.pool.request().query(`
+    const result = await this.pool
+      .request()
+      .input('periodo', sql.Int, this.sanitizeDays(periodo)).query(`
       SELECT TOP 10
         UsuCad AS nomeVendedor,
         COUNT(DISTINCT Pedido) AS qtdPedidos,
@@ -140,7 +159,7 @@ export class DashboardService {
         ISNULL(AVG(ValTotal), 0) AS ticketMedio,
         ISNULL(SUM(Lucro), 0) AS lucro
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${periodo}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
         AND UsuCad IS NOT NULL
@@ -153,8 +172,11 @@ export class DashboardService {
   }
 
   async getProdutosMaisVendidos(periodo: number = 30, top: number = 10) {
-    const result = await this.pool.request().query(`
-      SELECT TOP ${top}
+    const result = await this.pool
+      .request()
+      .input('periodo', sql.Int, this.sanitizeDays(periodo))
+      .input('top', sql.Int, this.sanitizeTop(top)).query(`
+      SELECT TOP (@top)
         i.CodRed AS codProduto,
         ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
         ISNULL(f.Descricao, '') AS familia,
@@ -165,7 +187,7 @@ export class DashboardService {
       INNER JOIN Pedido p ON p.Pedido = i.Pedido
       LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
       LEFT JOIN Familia f ON f.Codigo = pr.Familia
-      WHERE p.DT_Data >= DATEADD(DAY, -${periodo}, GETDATE())
+      WHERE p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
         AND p.Situacao = ${SITUACAO_FATURADO}
         AND i.Quantidade > 0
       GROUP BY i.CodRed, pr.Descricao, f.Descricao
@@ -175,8 +197,11 @@ export class DashboardService {
   }
 
   async getProdutosMenosVendidos(periodo: number = 30, top: number = 10) {
-    const result = await this.pool.request().query(`
-      SELECT TOP ${top}
+    const result = await this.pool
+      .request()
+      .input('periodo', sql.Int, this.sanitizeDays(periodo))
+      .input('top', sql.Int, this.sanitizeTop(top)).query(`
+      SELECT TOP (@top)
         i.CodRed AS codProduto,
         ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
         ISNULL(f.Descricao, '') AS familia,
@@ -187,7 +212,7 @@ export class DashboardService {
       INNER JOIN Pedido p ON p.Pedido = i.Pedido
       LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
       LEFT JOIN Familia f ON f.Codigo = pr.Familia
-      WHERE p.DT_Data >= DATEADD(DAY, -${periodo}, GETDATE())
+      WHERE p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
         AND p.Situacao = ${SITUACAO_FATURADO}
         AND i.Quantidade > 0
       GROUP BY i.CodRed, pr.Descricao, f.Descricao
@@ -326,10 +351,39 @@ export class DashboardService {
     return Number((((current - previous) / previous) * 100).toFixed(1));
   }
 
+  private getMonthlyRevenueGoal(): number {
+    const goal = Number(process.env.EXECUTIVE_MONTHLY_REVENUE_GOAL || 0);
+    return Number.isFinite(goal) && goal > 0 ? goal : 0;
+  }
+
+  private calculateMonthlyProjection(currentRevenue: number) {
+    const now = new Date();
+    const elapsedDays = Math.max(now.getUTCDate(), 1);
+    const daysInMonth = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    return Math.round((currentRevenue / elapsedDays) * daysInMonth * 100) / 100;
+  }
+
+  private calculateRiskScore(
+    active: number,
+    atRisk: number,
+    lost: number,
+  ): number {
+    const total = active + atRisk + lost;
+    if (!total) return 0;
+    return Number((((atRisk * 0.6 + lost) / total) * 100).toFixed(1));
+  }
+
   async getExecutiveOverview(periodo: number = 30) {
     const dias = this.sanitizeDays(periodo);
+    const diasAnterior = dias * 2;
+    const diasRisco = dias * 3;
 
-    const comercialResult = await this.pool.request().query(`
+    const comercialResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior).query(`
       SELECT
         COUNT(DISTINCT Pedido) AS pedidos,
         ISNULL(SUM(ValTotal), 0) AS faturamento,
@@ -337,32 +391,40 @@ export class DashboardService {
         ISNULL(SUM(Lucro), 0) AS lucro,
         COUNT(DISTINCT CGCCPF) AS clientesAtivos,
         COUNT(DISTINCT UsuCad) AS vendedoresAtivos,
-        ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -${dias}, GETDATE()) THEN ValTotal END), 0) AS faturamentoAtual,
-        ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -${dias * 2}, GETDATE()) AND DT_Data < DATEADD(DAY, -${dias}, GETDATE()) THEN ValTotal END), 0) AS faturamentoAnterior
+        ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -@dias, GETDATE()) THEN ValTotal END), 0) AS faturamentoAtual,
+        ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -@diasAnterior, GETDATE()) AND DT_Data < DATEADD(DAY, -@dias, GETDATE()) THEN ValTotal END), 0) AS faturamentoAnterior,
+        ISNULL(SUM(CASE WHEN MONTH(DT_Data) = MONTH(GETDATE()) AND YEAR(DT_Data) = YEAR(GETDATE()) THEN ValTotal END), 0) AS faturamentoMesAtual
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias * 2}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@diasAnterior, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
     `);
 
-    const mixResult = await this.pool.request().query(`
+    const mixResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior).query(`
       SELECT ISNULL(AVG(CAST(itemCount AS FLOAT)), 0) AS mixMedioProdutos
       FROM (
         SELECT p.Pedido, COUNT(DISTINCT i.CodRed) AS itemCount
         FROM Pedido p
         INNER JOIN Itens i ON i.Pedido = p.Pedido
-        WHERE p.DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+        WHERE p.DT_Data >= DATEADD(DAY, -@dias, GETDATE())
           AND p.Situacao = ${SITUACAO_FATURADO}
           AND p.ValTotal > 0
         GROUP BY p.Pedido
       ) x
     `);
 
-    const vendedoresResult = await this.pool.request().query(`
+    const vendedoresResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior)
+      .input('diasRisco', sql.Int, diasRisco).query(`
       WITH atual AS (
         SELECT UsuCad, SUM(ValTotal) AS faturamentoAtual, COUNT(DISTINCT Pedido) AS pedidosAtual, SUM(Lucro) AS lucroAtual
         FROM Pedido
-        WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
@@ -371,8 +433,8 @@ export class DashboardService {
       ), anterior AS (
         SELECT UsuCad, SUM(ValTotal) AS faturamentoAnterior
         FROM Pedido
-        WHERE DT_Data >= DATEADD(DAY, -${dias * 2}, GETDATE())
-          AND DT_Data < DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data >= DATEADD(DAY, -@diasAnterior, GETDATE())
+          AND DT_Data < DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
@@ -391,11 +453,15 @@ export class DashboardService {
       ORDER BY a.pedidosAtual DESC, a.faturamentoAtual DESC
     `);
 
-    const clientesResult = await this.pool.request().query(`
+    const clientesResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior)
+      .input('diasRisco', sql.Int, diasRisco).query(`
       WITH atual AS (
         SELECT CGCCPF, SUM(ValTotal) AS faturamentoAtual, COUNT(DISTINCT Pedido) AS pedidosAtual, MAX(DT_Data) AS ultimaCompra
         FROM Pedido
-        WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND CGCCPF IS NOT NULL
@@ -403,8 +469,8 @@ export class DashboardService {
       ), anterior AS (
         SELECT CGCCPF, SUM(ValTotal) AS faturamentoAnterior
         FROM Pedido
-        WHERE DT_Data >= DATEADD(DAY, -${dias * 2}, GETDATE())
-          AND DT_Data < DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data >= DATEADD(DAY, -@diasAnterior, GETDATE())
+          AND DT_Data < DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND CGCCPF IS NOT NULL
@@ -412,7 +478,7 @@ export class DashboardService {
       ), historico AS (
         SELECT CGCCPF, MAX(DT_Data) AS ultimaCompraHistorica
         FROM Pedido
-        WHERE DT_Data < DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data < DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND CGCCPF IS NOT NULL
@@ -421,15 +487,18 @@ export class DashboardService {
       SELECT
         (SELECT COUNT(*) FROM atual) AS clientesAtivos,
         (SELECT COUNT(*) FROM atual a LEFT JOIN anterior b ON b.CGCCPF = a.CGCCPF WHERE ISNULL(b.faturamentoAnterior, 0) = 0) AS clientesNovosOuRecuperados,
-        (SELECT COUNT(*) FROM historico h LEFT JOIN atual a ON a.CGCCPF = h.CGCCPF WHERE a.CGCCPF IS NULL AND h.ultimaCompraHistorica >= DATEADD(DAY, -${dias * 3}, GETDATE())) AS clientesEmRisco,
+        (SELECT COUNT(*) FROM historico h LEFT JOIN atual a ON a.CGCCPF = h.CGCCPF WHERE a.CGCCPF IS NULL AND h.ultimaCompraHistorica >= DATEADD(DAY, -@diasRisco, GETDATE())) AS clientesEmRisco,
         (SELECT COUNT(*) FROM anterior b LEFT JOIN atual a ON a.CGCCPF = b.CGCCPF WHERE a.CGCCPF IS NULL) AS clientesPerdidos
     `);
 
-    const curvaClientesResult = await this.pool.request().query(`
+    const curvaClientesResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior).query(`
       WITH clientes AS (
         SELECT CGCCPF, SUM(ValTotal) AS faturamento
         FROM Pedido
-        WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+        WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND CGCCPF IS NOT NULL
@@ -446,7 +515,10 @@ export class DashboardService {
       FROM ranked
     `);
 
-    const produtosResult = await this.pool.request().query(`
+    const produtosResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior).query(`
       WITH produtos AS (
         SELECT
           i.CodRed,
@@ -459,7 +531,7 @@ export class DashboardService {
         INNER JOIN Pedido p ON p.Pedido = i.Pedido
         LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
         LEFT JOIN Familia f ON f.Codigo = pr.Familia
-        WHERE p.DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+        WHERE p.DT_Data >= DATEADD(DAY, -@dias, GETDATE())
           AND p.Situacao = ${SITUACAO_FATURADO}
           AND i.Quantidade > 0
         GROUP BY i.CodRed, pr.Descricao, f.Descricao
@@ -478,20 +550,54 @@ export class DashboardService {
       FROM ranked
     `);
 
-    const financeiroResult = await this.pool.request().query(`
+    const financeiroResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias)
+      .input('diasAnterior', sql.Int, diasAnterior).query(`
       SELECT
         ISNULL(SUM(ValTotal), 0) AS faturamento,
         ISNULL(SUM(Lucro), 0) AS lucroBrutoAproximado,
         CASE WHEN ISNULL(SUM(ValTotal), 0) > 0 THEN ISNULL(SUM(Lucro), 0) / SUM(ValTotal) * 100 ELSE 0 END AS margemBrutaPercentual,
         ISNULL(SUM(ValTotal - Lucro), 0) AS cmvAproximado
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
     `);
 
+    const concentracaoResult = await this.pool
+      .request()
+      .input('dias', sql.Int, dias).query(`
+      WITH clientes AS (
+        SELECT TOP 10 CGCCPF, SUM(ValTotal) AS faturamento
+        FROM Pedido
+        WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
+          AND Situacao = ${SITUACAO_FATURADO}
+          AND ValTotal > 0
+          AND CGCCPF IS NOT NULL
+        GROUP BY CGCCPF
+        ORDER BY faturamento DESC
+      ), total AS (
+        SELECT SUM(ValTotal) AS faturamentoTotal
+        FROM Pedido
+        WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
+          AND Situacao = ${SITUACAO_FATURADO}
+          AND ValTotal > 0
+          AND CGCCPF IS NOT NULL
+      )
+      SELECT
+        ISNULL(SUM(c.faturamento), 0) AS faturamentoTop10Clientes,
+        ISNULL(MAX(t.faturamentoTotal), 0) AS faturamentoTotalClientes,
+        CASE WHEN ISNULL(MAX(t.faturamentoTotal), 0) > 0
+          THEN ISNULL(SUM(c.faturamento), 0) / MAX(t.faturamentoTotal) * 100
+          ELSE 0 END AS percentualTop10Clientes
+      FROM clientes c
+      CROSS JOIN total t
+    `);
+
     const geograficoResult = await this.pool
       .request()
+      .input('dias', sql.Int, dias)
       .query(
         `
       SELECT TOP 10
@@ -499,7 +605,7 @@ export class DashboardService {
         COUNT(DISTINCT Pedido) AS pedidos,
         ISNULL(SUM(ValTotal), 0) AS faturamento
       FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -${dias}, GETDATE())
+      WHERE DT_Data >= DATEADD(DAY, -@dias, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
       GROUP BY COALESCE(CAST(Cidade AS VARCHAR), CAST(Municipio AS VARCHAR), 'NÃO INFORMADO')
@@ -514,10 +620,31 @@ export class DashboardService {
     const financeiro = financeiroResult.recordset[0];
     const mix = mixResult.recordset[0];
     const curvaClientes = curvaClientesResult.recordset[0] || {};
+    const concentracao = concentracaoResult.recordset[0] || {};
 
     const faturamentoAtual = this.toNumber(comercial.faturamentoAtual);
     const faturamentoAnterior = this.toNumber(comercial.faturamentoAnterior);
     const crescimento = this.calcGrowth(faturamentoAtual, faturamentoAnterior);
+    const metaMensal = this.getMonthlyRevenueGoal();
+    const faturamentoMes = this.toNumber(comercial.faturamentoMesAtual);
+    const previsaoFechamentoMes =
+      this.calculateMonthlyProjection(faturamentoMes);
+    const percentualMeta =
+      metaMensal > 0
+        ? Number(((faturamentoMes / metaMensal) * 100).toFixed(1))
+        : 0;
+    const percentualMetaProjetada =
+      metaMensal > 0
+        ? Number(((previsaoFechamentoMes / metaMensal) * 100).toFixed(1))
+        : 0;
+    const clientesAtivos = this.toNumber(clientes.clientesAtivos);
+    const clientesEmRisco = this.toNumber(clientes.clientesEmRisco);
+    const clientesPerdidos = this.toNumber(clientes.clientesPerdidos);
+    const scoreRiscoCarteira = this.calculateRiskScore(
+      clientesAtivos,
+      clientesEmRisco,
+      clientesPerdidos,
+    );
 
     return {
       periodoDias: dias,
@@ -531,21 +658,51 @@ export class DashboardService {
           ticketMedio: this.toNumber(comercial.ticketMedio),
           mixMedioProdutosPorPedido: this.toNumber(mix.mixMedioProdutos),
           vendedoresAtivos: this.toNumber(comercial.vendedoresAtivos),
+          metaMensal,
+          faturamentoMes,
+          previsaoFechamentoMes,
+          percentualMeta,
+          percentualMetaProjetada,
+          tendenciaMeta:
+            metaMensal > 0 && previsaoFechamentoMes >= metaMensal
+              ? 'acima-da-meta'
+              : metaMensal > 0
+                ? 'abaixo-da-meta'
+                : 'meta-nao-configurada',
           rankingVendedores: vendedoresResult.recordset.map((v) => ({
             ...v,
             crescimentoPercentual: this.calcGrowth(
               this.toNumber(v.faturamento),
               this.toNumber(v.faturamentoAnterior),
             ),
+            scorePerformance: Math.min(
+              100,
+              Math.max(
+                0,
+                Number(
+                  (
+                    this.calcGrowth(
+                      this.toNumber(v.faturamento),
+                      this.toNumber(v.faturamentoAnterior),
+                    ) + 50
+                  ).toFixed(1),
+                ),
+              ),
+            ),
           })),
         },
         clientes: {
-          ativos: this.toNumber(clientes.clientesAtivos),
+          ativos: clientesAtivos,
           novosOuRecuperados: this.toNumber(
             clientes.clientesNovosOuRecuperados,
           ),
-          emRisco: this.toNumber(clientes.clientesEmRisco),
-          perdidos: this.toNumber(clientes.clientesPerdidos),
+          emRisco: clientesEmRisco,
+          perdidos: clientesPerdidos,
+          scoreRiscoCarteira,
+          recomendacao:
+            scoreRiscoCarteira >= 35
+              ? 'Priorizar recuperação de clientes A/B sem compra e revisar carteira comercial.'
+              : 'Manter rotina de positivação e monitorar clientes sem compra.',
           curvaABC: {
             A: this.toNumber(curvaClientes.clientesA),
             B: this.toNumber(curvaClientes.clientesB),
@@ -571,6 +728,12 @@ export class DashboardService {
             this.toNumber(financeiro.margemBrutaPercentual).toFixed(1),
           ),
           cmvAproximado: this.toNumber(financeiro.cmvAproximado),
+          concentracaoTop10ClientesPercentual: Number(
+            this.toNumber(concentracao.percentualTop10Clientes).toFixed(1),
+          ),
+          faturamentoTop10Clientes: this.toNumber(
+            concentracao.faturamentoTop10Clientes,
+          ),
           limitacoes: [
             'Inadimplência, aging, contas a pagar/receber e fluxo de caixa dependem de tabelas financeiras ainda não mapeadas.',
           ],
