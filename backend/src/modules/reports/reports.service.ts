@@ -140,18 +140,19 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ) {
-    const dateFilter = this.getDateWhereClause('', dias, startDate, endDate);
+    const dateFilter = this.getDateWhereClause('p.', dias, startDate, endDate);
     const result = await this.pool.request().query(`
       SELECT TOP 100
-        ISNULL(CAST(CGCCPF AS VARCHAR), 'BALCÃO / CONSUMIDOR FINAL') AS documentoCliente,
-        COUNT(DISTINCT Pedido) AS qtdPedidos,
-        ISNULL(SUM(ValTotal), 0) AS faturamentoTotal,
-        MAX(DT_Data) AS dataUltimaCompra
-      FROM Pedido
+        ISNULL(NULLIF(MAX(c.NOME), ''), ISNULL(CAST(p.CGCCPF AS VARCHAR), 'BALCÃO / CONSUMIDOR FINAL')) AS documentoCliente,
+        COUNT(DISTINCT p.Pedido) AS qtdPedidos,
+        ISNULL(SUM(p.ValTotal), 0) AS faturamentoTotal,
+        MAX(p.DT_Data) AS dataUltimaCompra
+      FROM Pedido p
+      LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
       WHERE ${dateFilter}
-        AND Situacao = ${SITUACAO_FATURADO}
-        AND ValTotal > 0
-      GROUP BY CGCCPF
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+      GROUP BY p.CGCCPF
       ORDER BY faturamentoTotal DESC
     `);
     return result.recordset;

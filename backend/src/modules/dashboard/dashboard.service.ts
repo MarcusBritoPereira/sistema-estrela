@@ -633,18 +633,19 @@ export class DashboardService {
 
     const clientesRisco = await this.pool.request().query(`
       SELECT TOP 10
-        CAST(CGCCPF AS VARCHAR) AS documentoCliente,
-        MAX(DT_Data) AS ultimaCompra,
-        DATEDIFF(DAY, MAX(DT_Data), GETDATE()) AS diasSemComprar,
-        ISNULL(SUM(ValTotal), 0) AS faturamentoHistorico
-      FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -120, GETDATE())
-        AND DT_Data < DATEADD(DAY, -30, GETDATE())
-        AND Situacao = ${SITUACAO_FATURADO}
-        AND ValTotal > 0
-        AND CGCCPF IS NOT NULL
-      GROUP BY CGCCPF
-      HAVING MAX(DT_Data) < DATEADD(DAY, -30, GETDATE())
+        ISNULL(NULLIF(MAX(c.NOME), ''), CAST(p.CGCCPF AS VARCHAR)) AS documentoCliente,
+        MAX(p.DT_Data) AS ultimaCompra,
+        DATEDIFF(DAY, MAX(p.DT_Data), GETDATE()) AS diasSemComprar,
+        ISNULL(SUM(p.ValTotal), 0) AS faturamentoHistorico
+      FROM Pedido p
+      LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
+      WHERE p.DT_Data >= DATEADD(DAY, -120, GETDATE())
+        AND p.DT_Data < DATEADD(DAY, -30, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+        AND p.CGCCPF IS NOT NULL
+      GROUP BY p.CGCCPF
+      HAVING MAX(p.DT_Data) < DATEADD(DAY, -30, GETDATE())
       ORDER BY faturamentoHistorico DESC
     `);
 

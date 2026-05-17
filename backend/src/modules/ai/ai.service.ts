@@ -264,12 +264,13 @@ export class AiService {
           AND CGCCPF IS NOT NULL
         GROUP BY CGCCPF
       )
-      SELECT TOP 5 CAST(b.CGCCPF AS VARCHAR) AS cliente,
+      SELECT TOP 5 ISNULL(NULLIF(c.NOME, ''), CAST(b.CGCCPF AS VARCHAR)) AS cliente,
         ISNULL(a.atual, 0) AS atual,
         ISNULL(b.anterior, 0) AS anterior,
         ISNULL(a.atual, 0) - ISNULL(b.anterior, 0) AS impacto
       FROM anterior b
       LEFT JOIN atual a ON a.CGCCPF = b.CGCCPF
+      LEFT JOIN cadcli c ON c.CGC2 = b.CGCCPF
       WHERE ISNULL(a.atual, 0) < ISNULL(b.anterior, 0)
       ORDER BY impacto ASC
     `);
