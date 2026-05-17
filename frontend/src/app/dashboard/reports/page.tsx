@@ -3,9 +3,6 @@
 import { useState } from "react";
 import axios from "axios";
 import { PieChart, Download, FileSpreadsheet, Sparkles, CheckCircle2, FileText, Table, Calendar, Sliders } from "lucide-react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { useTheme } from "@/components/ThemeProvider";
 
 interface ReportDef {
@@ -124,11 +121,14 @@ export default function ReportsPage() {
         a.download = `${filename}.csv`;
         a.click();
       } else if (format === "xls") {
+        const XLSX = await import("xlsx");
         const ws = XLSX.utils.json_to_sheet(formattedData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Relatório Estrela BI");
         XLSX.writeFile(wb, `${filename}.xlsx`);
       } else if (format === "pdf") {
+        const { default: jsPDF } = await import("jspdf");
+        const { default: autoTable } = await import("jspdf-autotable");
         const doc = new jsPDF("l", "pt", "a4");
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
@@ -162,17 +162,17 @@ export default function ReportsPage() {
       }
 
       setFeedback(`✅ Arquivo "${filename}.${format === "xls" ? "xlsx" : format}" exportado com sucesso (${periodLabel})!`);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Erro na exportação:", err);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setFeedback(`❌ ${(err as any).response?.data?.message || "Erro ao conectar com o banco de dados SQL Server real para gerar o relatório."}`);
+      setFeedback(`❌ ${(err as any).response?.data?.message || (err as any).message || "Erro ao conectar com a base de dados para gerar o relatório."}`);
     } finally {
       setDownloading(null);
     }
   };
 
   return (
-    <div className="space-y-8 pb-12 transition-colors duration-300">
+    <div className="space-y-8 pb-12 transition-colors duration-300 animate-fade-in">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-1 text-xs text-blue-600 dark:text-blue-400 font-bold">
