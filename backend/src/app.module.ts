@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AiModule } from './modules/ai/ai.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     DashboardModule,
     AiModule,
     ReportsModule,
+    CustomersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

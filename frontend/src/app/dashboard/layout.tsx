@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Box, Home, LogOut, MessageSquare, PieChart, Settings, Users, Sun, Moon, Building2 } from "lucide-react";
+import { BarChart3, Box, Home, LogOut, MessageSquare, PieChart, Settings, Users, Sun, Moon, Building2, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/ThemeProvider";
@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Vendas", href: "/dashboard/sales", icon: BarChart3 },
     { name: "Vendedores", href: "/dashboard/vendors", icon: Users },
     { name: "Produtos", href: "/dashboard/products", icon: Box },
+    { name: "Clientes", href: "/dashboard/customers", icon: Briefcase },
     { name: "Faturamento CNPJ", href: "/dashboard/billing", icon: Building2 },
     { name: "Relatórios", href: "/dashboard/reports", icon: PieChart },
     { name: "IA Assistant", href: "/dashboard/ai", icon: MessageSquare },
