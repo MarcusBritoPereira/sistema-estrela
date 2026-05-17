@@ -235,7 +235,7 @@ export default function DashboardOverview() {
                   </span>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {/* 1. Comercial */}
                   <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
                     <div>
@@ -288,43 +288,7 @@ export default function DashboardOverview() {
                     </div>
                   </div>
 
-                  {/* 4. Financeiro */}
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">Financeiro (ERP)</span>
-                        <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400 font-bold" />
-                      </div>
-                      <p className="text-xl font-black text-[var(--text-main)]">
-                        {executiveOverview.pilares.financeiro.margemBrutaPercentual > 0 
-                          ? `${executiveOverview.pilares.financeiro.margemBrutaPercentual}% margem` 
-                          : "Margem não calculada"}
-                      </p>
-                    </div>
-                    <div className="mt-3">
-                      <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-lg block leading-tight">
-                        {"⚠️ Campo 'Lucro/Custo' zerado nas notas do ERP"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 5. Operação & Logística */}
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">Operação & Logística</span>
-                        <ShoppingCart className="w-4 h-4 text-purple-600 dark:text-purple-400 font-bold" />
-                      </div>
-                      <p className="text-xl font-black text-[var(--text-main)]">Parcial</p>
-                    </div>
-                    <div className="mt-3">
-                      <p className="text-xs font-semibold text-[var(--text-muted)] truncate" title={executiveOverview.pilares.operacaoLogistica.disponivelAgora.join(" • ")}>
-                        {executiveOverview.pilares.operacaoLogistica.disponivelAgora.join(" • ")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 6. Curva ABC */}
+                  {/* 4. Curva ABC */}
                   <div className="rounded-2xl border border-blue-500/20 bg-blue-600/[0.03] dark:bg-blue-400/[0.04] p-4 flex flex-col justify-between shadow-sm sm:col-span-2 lg:col-span-1">
                     <div>
                       <div className="flex items-center justify-between mb-2">
