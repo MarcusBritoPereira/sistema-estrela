@@ -19,6 +19,13 @@ export class CustomersController {
     return this.customersService.getTopCustomers(d, search, sortBy || 'faturamento', sortOrder || 'DESC');
   }
 
+  @Get('orders/:id')
+  @ApiOperation({ summary: 'Obter o cabeçalho e os itens de um pedido específico' })
+  async getOrderDetails(@Param('id') id: string) {
+    const pedidoId = parseInt(id, 10);
+    return this.customersService.getOrderDetails(pedidoId);
+  }
+
   @Get(':cgc')
   @ApiOperation({ summary: 'Obter os detalhes completos de um cliente (Ficha, Pedidos e Produtos)' })
   async getCustomerDetails(

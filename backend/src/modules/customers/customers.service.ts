@@ -224,4 +224,74 @@ export class CustomersService {
       throw new HttpException('Erro ao consultar detalhes do cliente', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  async getOrderDetails(pedidoId: number) {
+    const req = this.pool.request();
+    req.input('pedidoId', sql.Int, pedidoId);
+
+    try {
+      // 1. Cabeçalho do Pedido
+      const pedidoQuery = `
+        SELECT TOP 1
+          p.Pedido AS pedido,
+          p.DT_Data AS data,
+          p.Situacao AS situacao,
+          p.ValTotal AS valorTotal,
+          ISNULL(p.UsuCad, 'SISTEMA') AS vendedor,
+          CAST(p.CGCCPF AS VARCHAR) AS cgc,
+          ISNULL(c.NOME, CAST(p.CGCCPF AS VARCHAR)) AS nomeCliente,
+          ISNULL(c.CondPag, 'À VISTA') AS condPag,
+          ISNULL(c.PRAZO, '0') AS prazo
+        FROM Pedido p
+        LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
+        WHERE p.Pedido = @pedidoId
+      `;
+      const pedidoRes = await req.query(pedidoQuery);
+      const pedido = pedidoRes.recordset[0];
+
+      if (!pedido) {
+        throw new HttpException(`Pedido #${pedidoId} não encontrado.`, HttpStatus.NOT_FOUND);
+      }
+
+      // 2. Itens do Pedido
+      const itensQuery = `
+        SELECT
+          ROW_NUMBER() OVER(ORDER BY i.ValorNegTot DESC) AS item,
+          i.CodRed AS codProduto,
+          ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
+          ISNULL(f.Descricao, 'Geral') AS familia,
+          i.Quantidade AS quantidade,
+          i.ValorNegUni AS precoUnitario,
+          i.ValorNegTot AS valorTotal
+        FROM Itens i
+        LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
+        LEFT JOIN Familia f ON f.Codigo = pr.Familia
+        WHERE i.Pedido = @pedidoId
+        ORDER BY valorTotal DESC
+      `;
+      const itensRes = await req.query(itensQuery);
+      const itens = itensRes.recordset.map((item) => ({
+        item: Number(item.item),
+        codProduto: item.codProduto,
+        nomeProduto: item.nomeProduto,
+        familia: item.familia,
+        quantidade: this.toNumber(item.quantidade),
+        precoUnitario: this.toNumber(item.precoUnitario),
+        valorTotal: this.toNumber(item.valorTotal),
+      }));
+
+      return {
+        pedido: {
+          ...pedido,
+          valorTotal: this.toNumber(pedido.valorTotal),
+        },
+        itens,
+      };
+    } catch (err) {
+      console.error(`Erro ao buscar pedido completo #${pedidoId}:`, err);
+      if (err instanceof HttpException) throw err;
+      throw new HttpException('Erro ao consultar detalhes do pedido', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }
+
