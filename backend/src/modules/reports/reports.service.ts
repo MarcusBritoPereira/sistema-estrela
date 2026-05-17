@@ -5,12 +5,35 @@ import * as path from 'path';
 
 const SITUACAO_FATURADO = "'2'";
 
-const COMPANY_MAP: Record<number, { name: string; cnpj: string; defaultLimit: number }> = {
-  1: { name: 'M L Munhoz Ltda', cnpj: '21.262.197/0001-07', defaultLimit: 2000000 },
-  2: { name: 'Globo Distribuidora', cnpj: '09.369.910/0001-10', defaultLimit: 2000000 },
-  3: { name: 'Mundial Distribuidora', cnpj: '09.408.077/0001-70', defaultLimit: 2000000 },
-  4: { name: 'A C Veras Ltda', cnpj: '21.243.849/0001-66', defaultLimit: 2000000 },
-  6: { name: 'Premium Distribuidora', cnpj: '55.401.528/0001-64', defaultLimit: 5000000 },
+const COMPANY_MAP: Record<
+  number,
+  { name: string; cnpj: string; defaultLimit: number }
+> = {
+  1: {
+    name: 'M L Munhoz Ltda',
+    cnpj: '21.262.197/0001-07',
+    defaultLimit: 2000000,
+  },
+  2: {
+    name: 'Globo Distribuidora',
+    cnpj: '09.369.910/0001-10',
+    defaultLimit: 2000000,
+  },
+  3: {
+    name: 'Mundial Distribuidora',
+    cnpj: '09.408.077/0001-70',
+    defaultLimit: 2000000,
+  },
+  4: {
+    name: 'A C Veras Ltda',
+    cnpj: '21.243.849/0001-66',
+    defaultLimit: 2000000,
+  },
+  6: {
+    name: 'Premium Distribuidora',
+    cnpj: '55.401.528/0001-64',
+    defaultLimit: 5000000,
+  },
 };
 
 @Injectable()
@@ -105,8 +128,9 @@ export class ReportsService {
         AND Situacao = ${SITUACAO_FATURADO}
         AND ValTotal > 0
         AND UsuCad IS NOT NULL AND UsuCad != ''
+        AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
       GROUP BY UsuCad
-      ORDER BY faturamento DESC
+      ORDER BY qtdPedidos DESC, faturamento DESC
     `);
     return result.recordset;
   }
@@ -146,7 +170,7 @@ export class ReportsService {
     if (fs.existsSync(filePath)) {
       try {
         const content = fs.readFileSync(filePath, 'utf-8');
-        return JSON.parse(content);
+        return JSON.parse(content) as Record<number, number>;
       } catch (err) {
         console.error('Falha ao ler arquivo de limites de CNPJ', err);
       }
@@ -158,9 +182,16 @@ export class ReportsService {
     return defaultLimits;
   }
 
-  async saveCnpjLimit(deposito: number, limite: number): Promise<{ success: boolean }> {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async saveCnpjLimit(
+    deposito: number,
+    limite: number,
+  ): Promise<{ success: boolean }> {
     if (!COMPANY_MAP[deposito]) {
-      throw new HttpException('Depósito/CNPJ não encontrado', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Depósito/CNPJ não encontrado',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const limits = this.getStoredLimits();
     limits[deposito] = Number(limite);
@@ -171,7 +202,11 @@ export class ReportsService {
 
   async getFaturamentoCnpj() {
     const limits = this.getStoredLimits();
-    const result = await this.pool.request().query(`
+    const result = await this.pool.request().query<{
+      Deposito: number;
+      qtdNotas: number;
+      faturamentoMensal: number;
+    }>(`
       SELECT
         Deposito,
         COUNT(*) as qtdNotas,
@@ -211,11 +246,20 @@ export class ReportsService {
       };
     });
 
-    const faturamentoTotalGrupo = empresas.reduce((acc, curr) => acc + curr.faturamentoMensal, 0);
-    const folegoTotalGrupo = empresas.reduce((acc, curr) => acc + curr.folegoRestante, 0);
+    const faturamentoTotalGrupo = empresas.reduce(
+      (acc, curr) => acc + curr.faturamentoMensal,
+      0,
+    );
+    const folegoTotalGrupo = empresas.reduce(
+      (acc, curr) => acc + curr.folegoRestante,
+      0,
+    );
 
     return {
-      mesAtual: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      mesAtual: new Date().toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric',
+      }),
       faturamentoTotalGrupo,
       folegoTotalGrupo,
       empresas,
@@ -223,9 +267,11 @@ export class ReportsService {
   }
 
   async getFaturamentoHistorico(period: string = '6m') {
-    let dateFilter = "DATEADD(MONTH, -5, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))";
+    let dateFilter =
+      'DATEADD(MONTH, -5, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))';
     if (period === '12m') {
-      dateFilter = "DATEADD(MONTH, -11, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))";
+      dateFilter =
+        'DATEADD(MONTH, -11, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0))';
     } else if (period === '2026') {
       dateFilter = "'2026-01-01 00:00:00'";
     } else if (period === '2025') {
@@ -236,10 +282,13 @@ export class ReportsService {
       dateFilter = "'2023-01-01 00:00:00'";
     }
 
-    let yearMaxFilter = "";
-    if (period === '2025') yearMaxFilter = " AND DT_Data <= '2025-12-31 23:59:59'";
-    if (period === '2024') yearMaxFilter = " AND DT_Data <= '2024-12-31 23:59:59'";
-    if (period === '2023') yearMaxFilter = " AND DT_Data <= '2023-12-31 23:59:59'";
+    let yearMaxFilter = '';
+    if (period === '2025')
+      yearMaxFilter = " AND DT_Data <= '2025-12-31 23:59:59'";
+    if (period === '2024')
+      yearMaxFilter = " AND DT_Data <= '2024-12-31 23:59:59'";
+    if (period === '2023')
+      yearMaxFilter = " AND DT_Data <= '2023-12-31 23:59:59'";
 
     const query = `
       SELECT
@@ -255,10 +304,30 @@ export class ReportsService {
       ORDER BY ano, mes, Deposito
     `;
 
-    const result = await this.pool.request().query(query);
+    const result = await this.pool.request().query<{
+      ano: number;
+      mes: number;
+      Deposito: number;
+      qtdNotas: number;
+      faturamento: number;
+    }>(query);
 
-    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const mapMeses: Record<string, any> = {};
+    const mesesNomes = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
+
+    const mapMeses: Record<string, Record<string, any>> = {};
 
     result.recordset.forEach((r) => {
       const key = `${mesesNomes[r.mes - 1]}/${r.ano}`;
@@ -279,7 +348,7 @@ export class ReportsService {
           dep_6_qtd: 0,
         };
       }
-      const dep = r.Deposito;
+      const dep = Number(r.Deposito);
       if ([1, 2, 3, 4, 6].includes(dep)) {
         mapMeses[key][`dep_${dep}_fat`] = Number(r.faturamento || 0);
         mapMeses[key][`dep_${dep}_qtd`] = Number(r.qtdNotas || 0);

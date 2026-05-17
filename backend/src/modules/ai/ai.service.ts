@@ -40,8 +40,9 @@ export class AiService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
-        ORDER BY faturamento DESC
+        ORDER BY pedidos DESC, faturamento DESC
       `);
 
       if (result.recordset.length === 0)
@@ -193,6 +194,7 @@ export class AiService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       ), anterior AS (
         SELECT UsuCad, SUM(ValTotal) AS anterior
@@ -201,6 +203,7 @@ export class AiService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       )
       SELECT TOP 5 COALESCE(a.UsuCad, b.UsuCad) AS nome,

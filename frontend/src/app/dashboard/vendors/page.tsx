@@ -87,9 +87,9 @@ export default function VendorsPage() {
               <div>
                 <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-amber-500 font-bold" />
-                  Top Vendedores em Faturamento Bruto
+                  Top Vendedores por Pedidos Tirados
                 </h3>
-                <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Classificação da equipe com base nos últimos {periodo} dias</p>
+                <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Classificação da equipe comercial com base nos últimos {periodo} dias</p>
               </div>
             </div>
             <div className="h-[400px] w-full">
@@ -107,7 +107,7 @@ export default function VendorsPage() {
                       itemStyle={{ color: theme === "light" ? "#0f172a" : "#fff", fontSize: "13px", fontWeight: "bold" }}
                       labelStyle={{ color: theme === "light" ? "#64748b" : "#aaa", fontSize: "11px", marginBottom: "4px", fontWeight: "bold" }}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      formatter={(val: any, name: any, props: any) => [`${formatCurrency(Number(val))} (${props.payload.qtdPedidos} ped)`, "Faturamento"]}
+                      formatter={(val: any, name: any, props: any) => [`${props.payload.qtdPedidos} pedidos (${formatCurrency(Number(val))})`, "Desempenho"]}
                     />
                     <Bar dataKey="faturamento" fill="#f59e0b" radius={[0, 8, 8, 0]} barSize={26} />
                   </BarChart>
@@ -123,7 +123,7 @@ export default function VendorsPage() {
                 <thead>
                   <tr className="border-b border-[var(--border-subtle)] text-xs uppercase font-black text-[var(--text-muted)] tracking-wider">
                     <th className="pb-3 pl-2">Posição</th>
-                    <th className="pb-3">Operador / Vendedor</th>
+                    <th className="pb-3">Vendedor / RCA</th>
                     <th className="pb-3 text-right">Pedidos Faturados</th>
                     <th className="pb-3 text-right">Ticket Médio</th>
                     <th className="pb-3 text-right pr-2">Faturamento Bruto</th>

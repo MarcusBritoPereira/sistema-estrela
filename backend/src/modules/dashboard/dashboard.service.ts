@@ -145,8 +145,9 @@ export class DashboardService {
         AND ValTotal > 0
         AND UsuCad IS NOT NULL
         AND UsuCad != ''
+        AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
       GROUP BY UsuCad
-      ORDER BY faturamento DESC
+      ORDER BY qtdPedidos DESC, faturamento DESC
     `);
     return result.recordset;
   }
@@ -199,6 +200,7 @@ export class DashboardService {
       WHERE DT_Data >= DATEADD(DAY, -7, GETDATE())
         AND Situacao = ${SITUACAO_FATURADO} AND ValTotal > 0
         AND UsuCad IS NOT NULL AND UsuCad != ''
+        AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
       GROUP BY UsuCad
       ORDER BY faturamento DESC
     `);
@@ -342,6 +344,7 @@ export class DashboardService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       ), anterior AS (
         SELECT UsuCad, SUM(ValTotal) AS faturamentoAnterior
@@ -351,6 +354,7 @@ export class DashboardService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       )
       SELECT TOP 10
@@ -362,7 +366,7 @@ export class DashboardService {
         ISNULL(b.faturamentoAnterior, 0) AS faturamentoAnterior
       FROM atual a
       LEFT JOIN anterior b ON b.UsuCad = a.UsuCad
-      ORDER BY a.faturamentoAtual DESC
+      ORDER BY a.pedidosAtual DESC, a.faturamentoAtual DESC
     `);
 
     const clientesResult = await this.pool.request().query(`
@@ -584,6 +588,7 @@ export class DashboardService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       ), anterior AS (
         SELECT UsuCad, SUM(ValTotal) AS anterior
@@ -593,6 +598,7 @@ export class DashboardService {
           AND Situacao = ${SITUACAO_FATURADO}
           AND ValTotal > 0
           AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
         GROUP BY UsuCad
       )
       SELECT TOP 5 a.UsuCad AS nomeVendedor, a.atual, b.anterior,

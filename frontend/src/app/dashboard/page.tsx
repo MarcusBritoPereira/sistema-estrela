@@ -418,9 +418,9 @@ export default function DashboardOverview() {
                 <div>
                   <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-amber-500 font-bold" />
-                    Ranking de Operadores
+                    Ranking de Vendedores
                   </h3>
-                  <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Top em faturamento no período selecionado</p>
+                  <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Top vendedores por pedidos tirados no período selecionado</p>
                 </div>
               </div>
               <div className="flex-1 min-h-[320px]">
@@ -449,8 +449,8 @@ export default function DashboardOverview() {
                         labelStyle={{ color: theme === "light" ? "#64748b" : "#aaa", fontSize: "11px", marginBottom: "4px", fontWeight: "bold" }}
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         formatter={(value: any, name: any, props: any) => [
-                          `${formatCurrency(Number(value))} (${props.payload.qtdPedidos} ped)`,
-                          "Faturamento",
+                          `${props.payload.qtdPedidos} pedidos (${formatCurrency(Number(value))})`,
+                          "Desempenho",
                         ]}
                       />
                       <Bar dataKey="faturamento" fill="#2563eb" radius={[0, 8, 8, 0]} barSize={22} />
