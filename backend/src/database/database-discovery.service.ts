@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable, Inject } from '@nestjs/common';
 import * as sql from 'mssql';
 
@@ -17,7 +18,9 @@ export interface ColumnInfo {
 
 @Injectable()
 export class DatabaseDiscoveryService {
-  constructor(@Inject('DATABASE_CONNECTION') private pool: sql.ConnectionPool) {}
+  constructor(
+    @Inject('DATABASE_CONNECTION') private pool: sql.ConnectionPool,
+  ) {}
 
   async discoverTables(): Promise<TableInfo[]> {
     const result = await this.pool.request().query(`
@@ -37,7 +40,9 @@ export class DatabaseDiscoveryService {
       try {
         const countRes = await this.pool
           .request()
-          .query(`SELECT COUNT(1) AS cnt FROM [${row.schema}].[${row.tableName}]`);
+          .query(
+            `SELECT COUNT(1) AS cnt FROM [${row.schema}].[${row.tableName}]`,
+          );
         rowCount = countRes.recordset[0].cnt;
       } catch {
         rowCount = -1;

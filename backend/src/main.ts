@@ -23,11 +23,13 @@ async function bootstrap() {
   // Swagger Configuration
   const config = new DocumentBuilder()
     .setTitle('Estrela BI API')
-    .setDescription('API for Business Intelligence System connected to SQL Server')
+    .setDescription(
+      'API for Business Intelligence System connected to SQL Server',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
@@ -35,4 +37,4 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
 }
-bootstrap();
+void bootstrap();

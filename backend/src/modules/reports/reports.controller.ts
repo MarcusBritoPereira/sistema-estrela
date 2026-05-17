@@ -12,10 +12,14 @@ export class ReportsController {
   async getConsolidado(
     @Query('dias') dias?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const days = dias ? parseInt(dias, 10) : 30;
-    const data = await this.reportsService.getConsolidadoFaturamento(days, startDate, endDate);
+    const data = await this.reportsService.getConsolidadoFaturamento(
+      days,
+      startDate,
+      endDate,
+    );
     return data;
   }
 
@@ -24,10 +28,14 @@ export class ReportsController {
   async getGiro(
     @Query('dias') dias?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const days = dias ? parseInt(dias, 10) : 30;
-    const data = await this.reportsService.getGiroEstoque(days, startDate, endDate);
+    const data = await this.reportsService.getGiroEstoque(
+      days,
+      startDate,
+      endDate,
+    );
     return data;
   }
 
@@ -36,10 +44,14 @@ export class ReportsController {
   async getEquipe(
     @Query('dias') dias?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const days = dias ? parseInt(dias, 10) : 30;
-    const data = await this.reportsService.getDesempenhoEquipe(days, startDate, endDate);
+    const data = await this.reportsService.getDesempenhoEquipe(
+      days,
+      startDate,
+      endDate,
+    );
     return data;
   }
 
@@ -48,10 +60,14 @@ export class ReportsController {
   async getClientes(
     @Query('dias') dias?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const days = dias ? parseInt(dias, 10) : 30;
-    const data = await this.reportsService.getCarteiraClientes(days, startDate, endDate);
+    const data = await this.reportsService.getCarteiraClientes(
+      days,
+      startDate,
+      endDate,
+    );
     return data;
   }
 }

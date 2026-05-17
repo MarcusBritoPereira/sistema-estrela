@@ -150,6 +150,7 @@ export default function AIChatPage() {
               "Quais foram os produtos mais vendidos?",
               "Qual o faturamento acumulado no mês?",
               "Quantos clientes foram atendidos?",
+              "Por que o faturamento caiu esta semana?",
             ].map((suggestion) => (
               <button
                 key={suggestion}
