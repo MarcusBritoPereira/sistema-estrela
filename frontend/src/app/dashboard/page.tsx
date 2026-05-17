@@ -235,113 +235,133 @@ export default function DashboardOverview() {
                   </span>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {/* 1. Comercial */}
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">Comercial</span>
-                        <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400 font-bold" />
+                <div className="flex flex-col gap-5">
+                  {/* Top 3 KPI Pillars */}
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {/* 1. Comercial */}
+                    <div className="rounded-3xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-5 flex flex-col justify-between shadow-sm">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs uppercase tracking-wider font-black text-[var(--text-muted)]">Comercial</span>
+                          <span className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            <DollarSign className="w-4 h-4 font-bold" />
+                          </span>
+                        </div>
+                        <p className="text-2xl font-black text-[var(--text-main)] tracking-tight">{formatCurrency(executiveOverview.pilares.comercial.faturamento)}</p>
                       </div>
-                      <p className="text-xl font-black text-[var(--text-main)]">{formatCurrency(executiveOverview.pilares.comercial.faturamento)}</p>
-                    </div>
-                    <div className="mt-3 flex items-center gap-1.5">
-                      <span className={`px-2 py-0.5 rounded-lg text-xs font-black ${executiveOverview.pilares.comercial.crescimentoPercentual >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"}`}>
-                        {executiveOverview.pilares.comercial.crescimentoPercentual >= 0 ? "+" : ""}{executiveOverview.pilares.comercial.crescimentoPercentual}%
-                      </span>
-                      <span className="text-xs font-medium text-[var(--text-muted)]">vs. período anterior</span>
-                    </div>
-                  </div>
-
-                  {/* 2. Clientes */}
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">Clientes Ativos</span>
-                        <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 font-bold" />
-                      </div>
-                      <p className="text-xl font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.ativos.toLocaleString("pt-BR")}</p>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-lg text-xs font-bold">
-                        {executiveOverview.pilares.clientes.novosOuRecuperados} novos/recuperados
-                      </span>
-                      <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg text-xs font-bold">
-                        {executiveOverview.pilares.clientes.emRisco} em risco
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 3. Produtos */}
-                  <div className="rounded-2xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-4 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-[var(--text-muted)]">Produtos Ativos</span>
-                        <Package className="w-4 h-4 text-amber-600 dark:text-amber-400 font-bold" />
-                      </div>
-                      <p className="text-xl font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.produtosVendidos.toLocaleString("pt-BR")}</p>
-                    </div>
-                    <div className="mt-3">
-                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-lg inline-block">
-                        {executiveOverview.pilares.produtos.unidadesVendidas.toLocaleString("pt-BR")} unidades vendidas
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 4. Curva ABC */}
-                  <div className="rounded-2xl border border-blue-500/20 bg-blue-600/[0.03] dark:bg-blue-400/[0.04] p-4 flex flex-col justify-between shadow-sm sm:col-span-2 lg:col-span-1">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] uppercase tracking-wider font-black text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5" /> Curva ABC (Pareto 80/20)
+                      <div className="mt-5 flex items-center gap-2 pt-3.5 border-t border-[var(--border-subtle)]">
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${executiveOverview.pilares.comercial.crescimentoPercentual >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"}`}>
+                          {executiveOverview.pilares.comercial.crescimentoPercentual >= 0 ? "+" : ""}{executiveOverview.pilares.comercial.crescimentoPercentual}%
                         </span>
-                        <span className="text-[10px] bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full uppercase">Receita</span>
+                        <span className="text-xs font-semibold text-[var(--text-muted)]">vs. período anterior</span>
                       </div>
-                      
+                    </div>
+
+                    {/* 2. Clientes */}
+                    <div className="rounded-3xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-5 flex flex-col justify-between shadow-sm">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs uppercase tracking-wider font-black text-[var(--text-muted)]">Clientes Ativos</span>
+                          <span className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                            <Users className="w-4 h-4 font-bold" />
+                          </span>
+                        </div>
+                        <p className="text-2xl font-black text-[var(--text-main)] tracking-tight">{executiveOverview.pilares.clientes.ativos.toLocaleString("pt-BR")}</p>
+                      </div>
+                      <div className="mt-5 flex flex-wrap items-center gap-2 pt-3.5 border-t border-[var(--border-subtle)]">
+                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-xl text-xs font-bold">
+                          {executiveOverview.pilares.clientes.novosOuRecuperados} novos/recuperados
+                        </span>
+                        <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-xl text-xs font-bold">
+                          {executiveOverview.pilares.clientes.emRisco} em risco
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 3. Produtos */}
+                    <div className="rounded-3xl border border-[var(--border-subtle)] bg-black/[0.02] dark:bg-white/[0.02] p-5 flex flex-col justify-between shadow-sm">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs uppercase tracking-wider font-black text-[var(--text-muted)]">Produtos Ativos</span>
+                          <span className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            <Package className="w-4 h-4 font-bold" />
+                          </span>
+                        </div>
+                        <p className="text-2xl font-black text-[var(--text-main)] tracking-tight">{executiveOverview.pilares.produtos.produtosVendidos.toLocaleString("pt-BR")}</p>
+                      </div>
+                      <div className="mt-5 pt-3.5 border-t border-[var(--border-subtle)] flex items-center">
+                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-3 py-1 rounded-xl inline-block">
+                          {executiveOverview.pilares.produtos.unidadesVendidas.toLocaleString("pt-BR")} unidades vendidas
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Curva ABC Banner */}
+                  <div className="rounded-3xl border border-blue-500/20 bg-gradient-to-r from-blue-600/[0.03] via-indigo-600/[0.02] to-blue-600/[0.03] dark:from-blue-400/[0.04] p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-blue-500/10">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl">
+                          <Sparkles className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-black text-[var(--text-main)] tracking-tight">Curva ABC (Pareto 80/20)</h4>
+                          <p className="text-xs font-semibold text-[var(--text-muted)] mt-0.5">Distribuição de receita concentrada nos itens e clientes de maior volume</p>
+                        </div>
+                      </div>
+                      <span className="self-start sm:self-center text-xs bg-blue-500/10 text-blue-700 dark:text-blue-300 font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                        Receita Concentrada
+                      </span>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
                       {/* Produtos */}
-                      <div className="pt-1.5">
-                        <span className="text-xs font-black text-[var(--text-main)] block mb-1.5 flex items-center justify-between">
-                          <span>📦 Produtos Ativos:</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-bold">A(80%) • B(15%) • C(5%)</span>
-                        </span>
-                        <div className="grid grid-cols-3 gap-1.5 text-center">
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-1.5" title="Curva A: Produtos que geram 80% do faturamento">
-                            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 block">Curva A</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.A}</span>
+                      <div className="bg-black/[0.01] dark:bg-white/[0.01] rounded-2xl p-4 border border-[var(--border-subtle)]">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm font-black text-[var(--text-main)] flex items-center gap-2">
+                            <span className="text-base">📦</span> Produtos Ativos
+                          </span>
+                          <span className="text-xs font-extrabold text-[var(--text-muted)] bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-lg">A (80%) • B (15%) • C (5%)</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 text-center">
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva A: Produtos que geram 80% do faturamento">
+                            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block mb-1">Curva A</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.A}</span>
                           </div>
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-1.5" title="Curva B: Produtos que geram 15% do faturamento">
-                            <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 block">Curva B</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.B}</span>
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva B: Produtos que geram 15% do faturamento">
+                            <span className="text-[11px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wider block mb-1">Curva B</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.B}</span>
                           </div>
-                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-1.5" title="Curva C: Produtos que geram 5% do faturamento">
-                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 block">Curva C</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.C}</span>
+                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva C: Produtos que geram 5% do faturamento">
+                            <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider block mb-1">Curva C</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.produtos.curvaABC.C}</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Clientes */}
-                      <div className="mt-3 pt-2.5 border-t border-blue-500/10">
-                        <span className="text-xs font-black text-[var(--text-main)] block mb-1.5 flex items-center justify-between">
-                          <span>👥 Clientes Ativos:</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-bold">A(80%) • B(15%) • C(5%)</span>
-                        </span>
-                        <div className="grid grid-cols-3 gap-1.5 text-center">
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-1.5" title="Curva A: Clientes que respondem por 80% do faturamento">
-                            <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 block">Curva A</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.A}</span>
+                      <div className="bg-black/[0.01] dark:bg-white/[0.01] rounded-2xl p-4 border border-[var(--border-subtle)]">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm font-black text-[var(--text-main)] flex items-center gap-2">
+                            <span className="text-base">👥</span> Clientes Ativos
+                          </span>
+                          <span className="text-xs font-extrabold text-[var(--text-muted)] bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-lg">A (80%) • B (15%) • C (5%)</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 text-center">
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva A: Clientes que respondem por 80% do faturamento">
+                            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block mb-1">Curva A</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.A}</span>
                           </div>
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-1.5" title="Curva B: Clientes que respondem por 15% do faturamento">
-                            <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 block">Curva B</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.B}</span>
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva B: Clientes que respondem por 15% do faturamento">
+                            <span className="text-[11px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wider block mb-1">Curva B</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.B}</span>
                           </div>
-                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-1.5" title="Curva C: Clientes que respondem por 5% do faturamento">
-                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 block">Curva C</span>
-                            <span className="text-base font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.C}</span>
+                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-3 transition-all hover:scale-[1.02]" title="Curva C: Clientes que respondem por 5% do faturamento">
+                            <span className="text-[11px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider block mb-1">Curva C</span>
+                            <span className="text-2xl font-black text-[var(--text-main)]">{executiveOverview.pilares.clientes.curvaABC.C}</span>
                           </div>
                         </div>
                       </div>
-
                     </div>
                   </div>
                 </div>
