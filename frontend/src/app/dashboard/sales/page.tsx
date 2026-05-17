@@ -5,6 +5,7 @@ import axios from "axios";
 import { BarChart3, Calendar, Loader2, TrendingUp, Sparkles } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
+import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 
 interface VendaDia {
   data: string;
@@ -26,11 +27,13 @@ export default function SalesPage() {
   const [vendasDia, setVendasDia] = useState<VendaDia[]>([]);
   const [vendasMes, setVendasMes] = useState<VendaMes[]>([]);
   const [dias, setDias] = useState("30");
+  const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
 
   useEffect(() => {
     async function fetchSales() {
       setLoading(true);
+      setError(null);
       try {
         const baseURL = "http://localhost:3000/dashboard";
         const [resDia, resMes] = await Promise.all([
@@ -41,6 +44,8 @@ export default function SalesPage() {
         setVendasMes(resMes.data);
       } catch (err) {
         console.error(err);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }
@@ -93,7 +98,9 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <DatabaseErrorAlert message={error} />
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center h-64 space-y-3 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl shadow-xl backdrop-blur-md">
           <Loader2 className="w-10 h-10 text-emerald-600 dark:text-emerald-400 animate-spin" />
           <p className="text-sm font-bold text-[var(--text-muted)] animate-pulse">Calculando notas e cupons no SQL Server...</p>

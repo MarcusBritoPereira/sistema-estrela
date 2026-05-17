@@ -164,7 +164,8 @@ export default function ReportsPage() {
       setFeedback(`✅ Arquivo "${filename}.${format === "xls" ? "xlsx" : format}" exportado com sucesso (${periodLabel})!`);
     } catch (err) {
       console.error("Erro na exportação:", err);
-      setFeedback(`❌ Erro ao conectar com o banco de dados SQL Server para gerar o relatório.`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setFeedback(`❌ ${(err as any).response?.data?.message || "Erro ao conectar com o banco de dados SQL Server real para gerar o relatório."}`);
     } finally {
       setDownloading(null);
     }

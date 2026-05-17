@@ -45,9 +45,9 @@ export default function AIChatPage() {
         role: "assistant",
         content: response.data.response,
       }]);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      setError("Não foi possível conectar ao banco SQL Server ou processar a pergunta. Tente novamente.");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError((err as any).response?.data?.message || "Não foi possível conectar ao banco SQL Server real ou processar a pergunta. Conecte-se à VPN da Distribuidora Estrela.");
     } finally {
       setIsLoading(false);
     }

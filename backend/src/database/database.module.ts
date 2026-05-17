@@ -1,4 +1,4 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, HttpException, HttpStatus } from '@nestjs/common';
 import * as sql from 'mssql';
 import { DatabaseDiscoveryService } from './database-discovery.service';
 import { DatabaseDiscoveryController } from './database-discovery.controller';
@@ -13,8 +13,8 @@ export const sqlConfig: sql.config = {
     encrypt: false,
     trustServerCertificate: true,
     enableArithAbort: true,
-    connectTimeout: 10000,
-    requestTimeout: 30000,
+    connectTimeout: 5000,
+    requestTimeout: 15000,
   },
   pool: {
     max: 10,
@@ -26,7 +26,7 @@ export const sqlConfig: sql.config = {
 const databaseProvider = {
   provide: 'DATABASE_CONNECTION',
   useFactory: async () => {
-    let retries = 3;
+    let retries = 2;
     while (retries > 0) {
       try {
         console.log(`⏳ Tentando conectar ao SQL Server real em ${sqlConfig.server}:${sqlConfig.port}...`);
@@ -37,9 +37,25 @@ const databaseProvider = {
         retries--;
         console.error(`❌ Falha na conexão com SQL Server. Tentativas restantes: ${retries}`, (err as Error).message);
         if (retries === 0) {
-          throw new Error(`CRITICAL: Não foi possível conectar ao banco SQL Server da Distribuidora Estrela (${sqlConfig.server}:${sqlConfig.port}). O sistema está configurado para requerer acesso a dados reais e não aceita dados mockados.`);
+          console.warn('⚠️ Banco SQL Server inalcançável. Iniciando backend em modo de proteção. Requer conexão com a VPN/Rede.');
+          return {
+            request: () => {
+              const req = {
+                input: function () {
+                  return this;
+                },
+                query: async () => {
+                  throw new HttpException(
+                    `Banco de dados SQL Server real (${sqlConfig.server}:${sqlConfig.port}) está inacessível. Verifique sua conexão com a VPN ou rede local da Distribuidora Estrela.`,
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                  );
+                },
+              };
+              return req;
+            },
+          };
         }
-        await new Promise((r) => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 2000));
       }
     }
   },

@@ -5,6 +5,7 @@ import axios from "axios";
 import { Users, Trophy, Loader2, Sparkles } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
+import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 
 interface RankingVendedor {
   nomeVendedor: string;
@@ -18,16 +19,20 @@ export default function VendorsPage() {
   const [loading, setLoading] = useState(true);
   const [ranking, setRanking] = useState<RankingVendedor[]>([]);
   const [periodo, setPeriodo] = useState("30");
+  const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
 
   useEffect(() => {
     async function fetchVendors() {
       setLoading(true);
+      setError(null);
       try {
         const res = await axios.get<RankingVendedor[]>(`http://localhost:3000/dashboard/ranking-vendedores?periodo=${periodo}`);
         setRanking(res.data);
       } catch (err) {
         console.error(err);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }
@@ -68,7 +73,9 @@ export default function VendorsPage() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <DatabaseErrorAlert message={error} />
+      ) : loading ? (
         <div className="flex flex-col items-center justify-center h-64 space-y-3 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl shadow-xl backdrop-blur-md">
           <Loader2 className="w-10 h-10 text-amber-600 dark:text-amber-500 animate-spin" />
           <p className="text-sm font-bold text-[var(--text-muted)] animate-pulse">Inspecionando faturamento de operadores no SQL Server...</p>
