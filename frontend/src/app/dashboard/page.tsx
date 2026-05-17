@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, DollarSign, Package, ShoppingCart, Target, TrendingUp, Users, Loader2, Sparkles, Trophy, Award } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, DollarSign, Package, ShoppingCart, Target, TrendingUp, TrendingDown, Users, Loader2, Sparkles, Trophy, Award } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
 import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
@@ -98,7 +98,8 @@ export default function DashboardOverview() {
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [vendasMes, setVendasMes] = useState<VendaMes[]>([]);
   const [ranking, setRanking] = useState<RankingVendedor[]>([]);
-  const [produtos, setProdutos] = useState<ProdutoMaisVendido[]>([]);
+  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<ProdutoMaisVendido[]>([]);
+  const [produtosMenosVendidos, setProdutosMenosVendidos] = useState<ProdutoMaisVendido[]>([]);
   const [insights, setInsights] = useState<string[]>([]);
   const [executiveOverview, setExecutiveOverview] = useState<ExecutiveOverview | null>(null);
   const [executiveAlerts, setExecutiveAlerts] = useState<ExecutiveAlert[]>([]);
@@ -111,11 +112,12 @@ export default function DashboardOverview() {
       setError(null);
       try {
         const baseURL = "http://localhost:3000/dashboard";
-        const [resKpis, resMes, resRanking, resProd, resInsights, resExecutive, resAlerts] = await Promise.all([
+        const [resKpis, resMes, resRanking, resProdMais, resProdMenos, resInsights, resExecutive, resAlerts] = await Promise.all([
           axios.get<Kpis>(`${baseURL}/kpis?periodo=${periodo}`),
           axios.get<VendaMes[]>(`${baseURL}/vendas-mes?meses=6`),
           axios.get<RankingVendedor[]>(`${baseURL}/ranking-vendedores?periodo=${periodo}`),
           axios.get<ProdutoMaisVendido[]>(`${baseURL}/produtos-mais-vendidos?periodo=${periodo}&top=5`),
+          axios.get<ProdutoMaisVendido[]>(`${baseURL}/produtos-menos-vendidos?periodo=${periodo}&top=5`),
           axios.get<string[]>(`${baseURL}/insights`),
           axios.get<ExecutiveOverview>(`${baseURL}/executive-overview?periodo=${periodo}`),
           axios.get<ExecutiveAlert[]>(`${baseURL}/executive-alerts`),
@@ -124,7 +126,8 @@ export default function DashboardOverview() {
         setKpis(resKpis.data);
         setVendasMes(resMes.data);
         setRanking(resRanking.data);
-        setProdutos(resProd.data);
+        setProdutosMaisVendidos(resProdMais.data);
+        setProdutosMenosVendidos(resProdMenos.data);
         setInsights(resInsights.data);
         setExecutiveOverview(resExecutive.data);
         setExecutiveAlerts(resAlerts.data);
@@ -461,57 +464,113 @@ export default function DashboardOverview() {
             </div>
           </div>
 
-          {/* Top Selling Products List */}
-          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-[var(--shadow-card)] transition-colors duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
-                  <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-500 font-bold" />
-                  Top Produtos Mais Vendidos
-                </h3>
-                <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Produtos com maior faturamento e volume no período</p>
+          {/* Top and Bottom Selling Products Comparison */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Top Mais Vendidos */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-[var(--shadow-card)] flex flex-col justify-between transition-colors duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                    <Award className="w-5 h-5 text-emerald-600 dark:text-emerald-500 font-bold" />
+                    Top Produtos Mais Vendidos
+                  </h3>
+                  <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Produtos com maior faturamento e volume no período</p>
+                </div>
+                <span className="text-xs bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-full font-black flex items-center gap-1 shadow-sm">
+                  <TrendingUp className="w-3.5 h-3.5" /> Top 5 Exclusivo
+                </span>
               </div>
-              <span className="text-xs bg-black/5 dark:bg-white/5 border border-[var(--border-subtle)] px-3 py-1.5 rounded-full text-[var(--text-main)] font-black">Top 5 Exclusivo</span>
+
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left border-collapse min-w-[500px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border-subtle)] text-xs uppercase font-black text-[var(--text-muted)] tracking-wider">
+                      <th className="pb-3 pl-2 w-12">Pos</th>
+                      <th className="pb-3">Produto</th>
+                      <th className="pb-3">Família</th>
+                      <th className="pb-3 text-right">Qtd</th>
+                      <th className="pb-3 text-right">Preço Médio</th>
+                      <th className="pb-3 text-right pr-2">Faturamento</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-subtle)] text-sm font-semibold">
+                    {produtosMaisVendidos.map((prod, index) => (
+                      <tr key={prod.codProduto} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3 pl-2">
+                          <div className={`w-7 h-7 rounded-2xl flex items-center justify-center text-xs font-black shadow-md ${
+                            index === 0 ? "bg-amber-500 text-black shadow-amber-500/20" :
+                            index === 1 ? "bg-slate-300 text-black shadow-slate-300/20" :
+                            index === 2 ? "bg-amber-700 text-white shadow-amber-700/20" :
+                            "bg-black/10 dark:bg-white/10 text-[var(--text-muted)]"
+                          }`}>
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="py-3 font-black text-[var(--text-main)] max-w-[160px] sm:max-w-[200px] truncate" title={prod.nomeProduto}>{prod.nomeProduto}</td>
+                        <td className="py-3 text-xs font-bold text-[var(--text-muted)]">
+                          <span className="bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-xl border border-[var(--border-subtle)] inline-block max-w-[100px] truncate" title={prod.familia || "Diversos"}>
+                            {prod.familia || "Diversos"}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{prod.qtdVendida.toLocaleString("pt-BR")} un</td>
+                        <td className="py-3 text-right font-bold text-[var(--text-muted)] whitespace-nowrap">{formatCurrency(prod.precoMedio)}</td>
+                        <td className="py-3 text-right pr-2 font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatCurrency(prod.faturamento)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)] text-xs uppercase font-black text-[var(--text-muted)] tracking-wider">
-                    <th className="pb-3 pl-2">Ranking</th>
-                    <th className="pb-3">Produto</th>
-                    <th className="pb-3">Linha / Família</th>
-                    <th className="pb-3 text-right">Qtd Vendida</th>
-                    <th className="pb-3 text-right">Preço Médio</th>
-                    <th className="pb-3 text-right pr-2">Faturamento Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)] text-sm font-semibold">
-                  {produtos.map((prod, index) => (
-                    <tr key={prod.codProduto} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                      <td className="py-4 pl-2">
-                        <div className={`w-7 h-7 rounded-2xl flex items-center justify-center text-xs font-black shadow-md ${
-                          index === 0 ? "bg-amber-500 text-black shadow-amber-500/20" :
-                          index === 1 ? "bg-slate-300 text-black shadow-slate-300/20" :
-                          index === 2 ? "bg-amber-700 text-white shadow-amber-700/20" :
-                          "bg-black/10 dark:bg-white/10 text-[var(--text-muted)]"
-                        }`}>
-                          {index + 1}
-                        </div>
-                      </td>
-                      <td className="py-4 font-black text-[var(--text-main)] max-w-xs truncate">{prod.nomeProduto}</td>
-                      <td className="py-4 text-xs font-bold text-[var(--text-muted)]">
-                        <span className="bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-xl border border-[var(--border-subtle)] inline-block">
-                          {prod.familia || "Diversos"}
-                        </span>
-                      </td>
-                      <td className="py-4 text-right font-black text-blue-600 dark:text-blue-400">{prod.qtdVendida.toLocaleString("pt-BR")} un</td>
-                      <td className="py-4 text-right font-bold text-[var(--text-muted)]">{formatCurrency(prod.precoMedio)}</td>
-                      <td className="py-4 text-right pr-2 font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(prod.faturamento)}</td>
+            {/* Top Menos Vendidos */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl p-6 shadow-[var(--shadow-card)] flex flex-col justify-between transition-colors duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5 text-rose-600 dark:text-rose-500 font-bold" />
+                    Top Produtos Menos Vendidos
+                  </h3>
+                  <p className="text-xs font-medium text-[var(--text-muted)] mt-1">Produtos ativos com menor faturamento no período</p>
+                </div>
+                <span className="text-xs bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-full font-black flex items-center gap-1 shadow-sm">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Atenção no Giro
+                </span>
+              </div>
+
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left border-collapse min-w-[500px]">
+                  <thead>
+                    <tr className="border-b border-[var(--border-subtle)] text-xs uppercase font-black text-[var(--text-muted)] tracking-wider">
+                      <th className="pb-3 pl-2 w-12">Pos</th>
+                      <th className="pb-3">Produto</th>
+                      <th className="pb-3">Família</th>
+                      <th className="pb-3 text-right">Qtd</th>
+                      <th className="pb-3 text-right">Preço Médio</th>
+                      <th className="pb-3 text-right pr-2">Faturamento</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-subtle)] text-sm font-semibold">
+                    {produtosMenosVendidos.map((prod, index) => (
+                      <tr key={prod.codProduto} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3 pl-2">
+                          <div className="w-7 h-7 rounded-2xl flex items-center justify-center text-xs font-black shadow-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                            #{index + 1}
+                          </div>
+                        </td>
+                        <td className="py-3 font-black text-[var(--text-main)] max-w-[160px] sm:max-w-[200px] truncate" title={prod.nomeProduto}>{prod.nomeProduto}</td>
+                        <td className="py-3 text-xs font-bold text-[var(--text-muted)]">
+                          <span className="bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-xl border border-[var(--border-subtle)] inline-block max-w-[100px] truncate" title={prod.familia || "Diversos"}>
+                            {prod.familia || "Diversos"}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">{prod.qtdVendida.toLocaleString("pt-BR")} un</td>
+                        <td className="py-3 text-right font-bold text-[var(--text-muted)] whitespace-nowrap">{formatCurrency(prod.precoMedio)}</td>
+                        <td className="py-3 text-right pr-2 font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">{formatCurrency(prod.faturamento)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </>

@@ -174,6 +174,28 @@ export class DashboardService {
     return result.recordset;
   }
 
+  async getProdutosMenosVendidos(periodo: number = 30, top: number = 10) {
+    const result = await this.pool.request().query(`
+      SELECT TOP ${top}
+        i.CodRed AS codProduto,
+        ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
+        ISNULL(f.Descricao, '') AS familia,
+        SUM(i.Quantidade) AS qtdVendida,
+        ISNULL(SUM(i.ValorNegTot), 0) AS faturamento,
+        ISNULL(AVG(i.ValorNegUni), 0) AS precoMedio
+      FROM Itens i
+      INNER JOIN Pedido p ON p.Pedido = i.Pedido
+      LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
+      LEFT JOIN Familia f ON f.Codigo = pr.Familia
+      WHERE p.DT_Data >= DATEADD(DAY, -${periodo}, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND i.Quantidade > 0
+      GROUP BY i.CodRed, pr.Descricao, f.Descricao
+      ORDER BY faturamento ASC, SUM(i.Quantidade) ASC
+    `);
+    return result.recordset;
+  }
+
   async getInsightsAutomaticos() {
     const comparativo = await this.pool.request().query(`
       SELECT

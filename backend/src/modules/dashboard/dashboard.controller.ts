@@ -53,6 +53,20 @@ export class DashboardController {
     );
   }
 
+  @Get('produtos-menos-vendidos')
+  @ApiOperation({ summary: 'Get bottom selling products' })
+  @ApiQuery({ name: 'periodo', required: false })
+  @ApiQuery({ name: 'top', required: false })
+  async getProdutosMenosVendidos(
+    @Query('periodo') periodo = '30',
+    @Query('top') top = '10',
+  ) {
+    return this.dashboardService.getProdutosMenosVendidos(
+      parseInt(periodo, 10),
+      parseInt(top, 10),
+    );
+  }
+
   @Get('insights')
   @ApiOperation({ summary: 'Get automatic AI-driven insights from real data' })
   async getInsights() {
