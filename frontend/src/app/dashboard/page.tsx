@@ -102,6 +102,48 @@ interface ExecutiveAlert {
   action: string;
 }
 
+interface DailyDecisionCockpit {
+  status: "saudavel" | "atencao" | "critico";
+  headline: string;
+  indicadores: {
+    hoje: {
+      faturamento: number;
+      pedidos: number;
+      clientes: number;
+      crescimentoVsOntemPercentual: number;
+    };
+    semana: {
+      faturamento: number;
+      faturamentoAnterior: number;
+      pedidos: number;
+      vendedoresAtivos: number;
+      crescimentoPercentual: number;
+    };
+    mes: {
+      faturamento: number;
+      pedidos: number;
+      clientes: number;
+      lucroBrutoAproximado: number;
+      margemBrutaPercentual: number;
+      metaMensal: number;
+      previsaoFechamentoMes: number;
+      percentualMetaProjetada: number;
+      gapMetaProjetada: number;
+    };
+  };
+  decisoesHoje: Array<{
+    prioridade: number;
+    tema: string;
+    severidade: "critica" | "alta" | "media" | "baixa";
+    titulo: string;
+    descricao: string;
+    impactoEstimado: number;
+    responsavelSugerido: string;
+    acao: string;
+    prazo: string;
+  }>;
+}
+
 export default function DashboardOverview() {
   const [periodo, setPeriodo] = useState<string>("30");
   const [loading, setLoading] = useState<boolean>(true);
@@ -113,6 +155,7 @@ export default function DashboardOverview() {
   const [insights, setInsights] = useState<string[]>([]);
   const [executiveOverview, setExecutiveOverview] = useState<ExecutiveOverview | null>(null);
   const [executiveAlerts, setExecutiveAlerts] = useState<ExecutiveAlert[]>([]);
+  const [dailyCockpit, setDailyCockpit] = useState<DailyDecisionCockpit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
 
@@ -122,7 +165,7 @@ export default function DashboardOverview() {
       setError(null);
       try {
         const baseURL = "/dashboard";
-        const [resKpis, resMes, resRanking, resProdMais, resProdMenos, resInsights, resExecutive, resAlerts] = await Promise.all([
+        const [resKpis, resMes, resRanking, resProdMais, resProdMenos, resInsights, resExecutive, resAlerts, resDailyCockpit] = await Promise.all([
           api.get<Kpis>(`${baseURL}/kpis?periodo=${periodo}`),
           api.get<VendaMes[]>(`${baseURL}/vendas-mes?meses=6`),
           api.get<RankingVendedor[]>(`${baseURL}/ranking-vendedores?periodo=${periodo}`),
@@ -131,6 +174,7 @@ export default function DashboardOverview() {
           api.get<string[]>(`${baseURL}/insights`),
           api.get<ExecutiveOverview>(`${baseURL}/executive-overview?periodo=${periodo}`),
           api.get<ExecutiveAlert[]>(`${baseURL}/executive-alerts`),
+          api.get<DailyDecisionCockpit>(`${baseURL}/daily-decision-cockpit`),
         ]);
 
         setKpis(resKpis.data);
@@ -141,6 +185,7 @@ export default function DashboardOverview() {
         setInsights(resInsights.data);
         setExecutiveOverview(resExecutive.data);
         setExecutiveAlerts(resAlerts.data);
+        setDailyCockpit(resDailyCockpit.data);
       } catch (error) {
         console.error("Erro ao carregar dados do BI:", error);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,6 +203,19 @@ export default function DashboardOverview() {
   };
 
   const isGrowthPositive = kpis ? parseFloat(kpis.crescimentoMensal) >= 0 : true;
+
+  const getCockpitStatusClass = (status: DailyDecisionCockpit["status"]) => {
+    if (status === "critico") return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300";
+    if (status === "atencao") return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  };
+
+  const getDecisionSeverityClass = (severity: DailyDecisionCockpit["decisoesHoje"][number]["severidade"]) => {
+    if (severity === "critica") return "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30";
+    if (severity === "alta") return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30";
+    if (severity === "media") return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30";
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30";
+  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -200,6 +258,69 @@ export default function DashboardOverview() {
         </div>
       ) : (
         <>
+
+          {/* Daily Decision Cockpit */}
+          {dailyCockpit && (
+            <div className={`border rounded-3xl p-6 shadow-[var(--shadow-card)] ${getCockpitStatusClass(dailyCockpit.status)}`}>
+              <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-5">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-white/70 dark:bg-black/20 border border-current/20 text-xs font-black uppercase tracking-wider">
+                      Fase 1 — Cockpit diário
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-white/70 dark:bg-black/20 border border-current/20 text-xs font-black uppercase tracking-wider">
+                      Status: {dailyCockpit.status}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-black text-[var(--text-main)] tracking-tight">Sala de decisão da diretoria</h3>
+                  <p className="text-sm font-bold mt-1 text-[var(--text-muted)]">{dailyCockpit.headline}</p>
+
+                  <div className="grid gap-3 md:grid-cols-3 mt-5">
+                    <div className="rounded-2xl bg-white/70 dark:bg-black/20 border border-current/10 p-4">
+                      <span className="text-[11px] uppercase tracking-wider font-black">Hoje</span>
+                      <p className="text-xl font-black text-[var(--text-main)] mt-1">{formatCurrency(dailyCockpit.indicadores.hoje.faturamento)}</p>
+                      <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{dailyCockpit.indicadores.hoje.pedidos} pedidos • {dailyCockpit.indicadores.hoje.clientes} clientes</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/70 dark:bg-black/20 border border-current/10 p-4">
+                      <span className="text-[11px] uppercase tracking-wider font-black">Semana</span>
+                      <p className="text-xl font-black text-[var(--text-main)] mt-1">{formatCurrency(dailyCockpit.indicadores.semana.faturamento)}</p>
+                      <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{dailyCockpit.indicadores.semana.crescimentoPercentual >= 0 ? "+" : ""}{dailyCockpit.indicadores.semana.crescimentoPercentual}% vs. semana anterior</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/70 dark:bg-black/20 border border-current/10 p-4">
+                      <span className="text-[11px] uppercase tracking-wider font-black">Fechamento do mês</span>
+                      <p className="text-xl font-black text-[var(--text-main)] mt-1">{formatCurrency(dailyCockpit.indicadores.mes.previsaoFechamentoMes)}</p>
+                      <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{dailyCockpit.indicadores.mes.metaMensal > 0 ? `${dailyCockpit.indicadores.mes.percentualMetaProjetada}% da meta projetada` : "Meta mensal não configurada"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="xl:w-[430px] bg-white/75 dark:bg-black/25 border border-current/10 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="w-4 h-4" />
+                    <h4 className="text-sm font-black text-[var(--text-main)]">Prioridades de decisão hoje</h4>
+                  </div>
+                  <div className="space-y-3 max-h-[330px] overflow-auto pr-1">
+                    {dailyCockpit.decisoesHoje.slice(0, 4).map((decision) => (
+                      <div key={`${decision.prioridade}-${decision.titulo}`} className="rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] p-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase tracking-wider font-black text-[var(--text-muted)]">#{decision.prioridade} • {decision.tema}</span>
+                          <span className={`text-[10px] uppercase font-black border px-2 py-0.5 rounded-full ${getDecisionSeverityClass(decision.severidade)}`}>{decision.severidade}</span>
+                        </div>
+                        <p className="text-sm font-black text-[var(--text-main)] mt-1">{decision.titulo}</p>
+                        <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{decision.descricao}</p>
+                        {decision.impactoEstimado > 0 && (
+                          <p className="text-xs font-black text-blue-600 dark:text-blue-400 mt-2">Impacto estimado: {formatCurrency(decision.impactoEstimado)}</p>
+                        )}
+                        <p className="text-xs font-bold text-[var(--text-main)] mt-2">Ação: {decision.acao}</p>
+                        <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1">Responsável: {decision.responsavelSugerido} • Prazo: {decision.prazo}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* AI Insights Card */}
           {insights.length > 0 && (
             <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-blue-900/40 dark:via-indigo-900/30 dark:to-slate-900/40 border border-blue-500/30 rounded-3xl p-6 lg:p-8 relative overflow-hidden shadow-xl backdrop-blur-xl transition-all duration-300">

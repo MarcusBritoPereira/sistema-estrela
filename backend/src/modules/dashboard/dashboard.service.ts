@@ -375,6 +375,317 @@ export class DashboardService {
     return Number((((atRisk * 0.6 + lost) / total) * 100).toFixed(1));
   }
 
+  private classifyDailyCockpitStatus(
+    monthlyGoal: number,
+    projectedGoalPercent: number,
+    weeklyGrowth: number,
+    marginPercent: number,
+    criticalAlerts: number,
+  ): 'saudavel' | 'atencao' | 'critico' {
+    if (
+      criticalAlerts >= 2 ||
+      weeklyGrowth <= -20 ||
+      (monthlyGoal > 0 && projectedGoalPercent < 85) ||
+      (marginPercent > 0 && marginPercent < 8)
+    ) {
+      return 'critico';
+    }
+
+    if (
+      criticalAlerts >= 1 ||
+      weeklyGrowth < 0 ||
+      (monthlyGoal > 0 && projectedGoalPercent < 100) ||
+      (marginPercent > 0 && marginPercent < 15)
+    ) {
+      return 'atencao';
+    }
+
+    return 'saudavel';
+  }
+
+  private getDailyCockpitHeadline(status: string): string {
+    if (status === 'critico') {
+      return 'Diretoria deve atuar hoje: há risco relevante de meta, margem ou perda comercial.';
+    }
+
+    if (status === 'atencao') {
+      return 'Operação exige acompanhamento: existem desvios que podem comprometer o fechamento.';
+    }
+
+    return 'Indicadores principais saudáveis: manter ritmo e monitorar oportunidades do dia.';
+  }
+
+  private buildDecisionItem(
+    prioridade: number,
+    tema: string,
+    severidade: 'critica' | 'alta' | 'media' | 'baixa',
+    titulo: string,
+    descricao: string,
+    impactoEstimado: number,
+    responsavelSugerido: string,
+    acao: string,
+    prazo: string,
+  ) {
+    return {
+      prioridade,
+      tema,
+      severidade,
+      titulo,
+      descricao,
+      impactoEstimado,
+      responsavelSugerido,
+      acao,
+      prazo,
+    };
+  }
+
+  async getDailyDecisionCockpit() {
+    const [resumoResult, topQuedaVendedorResult, clienteRiscoResult] =
+      await Promise.all([
+        this.pool.request().query(`
+          SELECT
+            ISNULL(SUM(CASE WHEN CAST(DT_Data AS DATE) = CAST(GETDATE() AS DATE) THEN ValTotal END), 0) AS faturamentoHoje,
+            COUNT(DISTINCT CASE WHEN CAST(DT_Data AS DATE) = CAST(GETDATE() AS DATE) THEN Pedido END) AS pedidosHoje,
+            COUNT(DISTINCT CASE WHEN CAST(DT_Data AS DATE) = CAST(GETDATE() AS DATE) THEN CGCCPF END) AS clientesHoje,
+            ISNULL(SUM(CASE WHEN CAST(DT_Data AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) THEN ValTotal END), 0) AS faturamentoOntem,
+            ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -7, GETDATE()) THEN ValTotal END), 0) AS faturamentoSemana,
+            ISNULL(SUM(CASE WHEN DT_Data >= DATEADD(DAY, -14, GETDATE()) AND DT_Data < DATEADD(DAY, -7, GETDATE()) THEN ValTotal END), 0) AS faturamentoSemanaAnterior,
+            COUNT(DISTINCT CASE WHEN DT_Data >= DATEADD(DAY, -7, GETDATE()) THEN Pedido END) AS pedidosSemana,
+            COUNT(DISTINCT CASE WHEN DT_Data >= DATEADD(DAY, -7, GETDATE()) THEN UsuCad END) AS vendedoresAtivosSemana,
+            ISNULL(SUM(CASE WHEN MONTH(DT_Data) = MONTH(GETDATE()) AND YEAR(DT_Data) = YEAR(GETDATE()) THEN ValTotal END), 0) AS faturamentoMes,
+            COUNT(DISTINCT CASE WHEN MONTH(DT_Data) = MONTH(GETDATE()) AND YEAR(DT_Data) = YEAR(GETDATE()) THEN Pedido END) AS pedidosMes,
+            ISNULL(SUM(CASE WHEN MONTH(DT_Data) = MONTH(GETDATE()) AND YEAR(DT_Data) = YEAR(GETDATE()) THEN Lucro END), 0) AS lucroMes,
+            COUNT(DISTINCT CASE WHEN MONTH(DT_Data) = MONTH(GETDATE()) AND YEAR(DT_Data) = YEAR(GETDATE()) THEN CGCCPF END) AS clientesMes
+          FROM Pedido
+          WHERE DT_Data >= DATEADD(DAY, -45, GETDATE())
+            AND Situacao = ${SITUACAO_FATURADO}
+            AND ValTotal > 0
+        `),
+        this.pool.request().query(`
+          WITH atual AS (
+            SELECT UsuCad, SUM(ValTotal) AS atual
+            FROM Pedido
+            WHERE DT_Data >= DATEADD(DAY, -7, GETDATE())
+              AND Situacao = ${SITUACAO_FATURADO}
+              AND ValTotal > 0
+              AND UsuCad IS NOT NULL AND UsuCad != ''
+              AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
+            GROUP BY UsuCad
+          ), anterior AS (
+            SELECT UsuCad, SUM(ValTotal) AS anterior
+            FROM Pedido
+            WHERE DT_Data >= DATEADD(DAY, -14, GETDATE())
+              AND DT_Data < DATEADD(DAY, -7, GETDATE())
+              AND Situacao = ${SITUACAO_FATURADO}
+              AND ValTotal > 0
+              AND UsuCad IS NOT NULL AND UsuCad != ''
+              AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
+            GROUP BY UsuCad
+          )
+          SELECT TOP 1
+            a.UsuCad AS nomeVendedor,
+            a.atual,
+            b.anterior,
+            CASE WHEN b.anterior > 0 THEN ((a.atual - b.anterior) / b.anterior) * 100 ELSE 0 END AS variacao,
+            CASE WHEN b.anterior > a.atual THEN b.anterior - a.atual ELSE 0 END AS impactoEstimado
+          FROM atual a
+          INNER JOIN anterior b ON b.UsuCad = a.UsuCad
+          WHERE b.anterior > 0 AND a.atual < b.anterior * 0.8
+          ORDER BY impactoEstimado DESC
+        `),
+        this.pool.request().query(`
+          SELECT TOP 1
+            p.CGCCPF AS documentoCliente,
+            ISNULL(NULLIF(c.NOME, ''), CAST(p.CGCCPF AS VARCHAR)) AS nomeCliente,
+            MAX(p.DT_Data) AS ultimaCompra,
+            DATEDIFF(DAY, MAX(p.DT_Data), GETDATE()) AS diasSemComprar,
+            SUM(p.ValTotal) AS faturamentoHistorico
+          FROM Pedido p
+          LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
+          WHERE p.DT_Data >= DATEADD(DAY, -180, GETDATE())
+            AND p.Situacao = ${SITUACAO_FATURADO}
+            AND p.ValTotal > 0
+            AND p.CGCCPF IS NOT NULL
+          GROUP BY p.CGCCPF, c.NOME
+          HAVING DATEDIFF(DAY, MAX(p.DT_Data), GETDATE()) >= 30
+          ORDER BY faturamentoHistorico DESC
+        `),
+      ]);
+
+    const resumo = resumoResult.recordset[0] || {};
+    const faturamentoHoje = this.toNumber(resumo.faturamentoHoje);
+    const faturamentoOntem = this.toNumber(resumo.faturamentoOntem);
+    const faturamentoSemana = this.toNumber(resumo.faturamentoSemana);
+    const faturamentoSemanaAnterior = this.toNumber(
+      resumo.faturamentoSemanaAnterior,
+    );
+    const faturamentoMes = this.toNumber(resumo.faturamentoMes);
+    const lucroMes = this.toNumber(resumo.lucroMes);
+    const metaMensal = this.getMonthlyRevenueGoal();
+    const previsaoFechamentoMes = this.calculateMonthlyProjection(faturamentoMes);
+    const crescimentoHoje = this.calcGrowth(faturamentoHoje, faturamentoOntem);
+    const crescimentoSemana = this.calcGrowth(
+      faturamentoSemana,
+      faturamentoSemanaAnterior,
+    );
+    const margemMesPercentual = faturamentoMes
+      ? Number(((lucroMes / faturamentoMes) * 100).toFixed(1))
+      : 0;
+    const percentualMetaProjetada = metaMensal
+      ? Number(((previsaoFechamentoMes / metaMensal) * 100).toFixed(1))
+      : 0;
+    const gapMetaProjetada = Math.max(metaMensal - previsaoFechamentoMes, 0);
+
+    const decisoesHoje: ReturnType<typeof this.buildDecisionItem>[] = [];
+
+    if (metaMensal > 0 && percentualMetaProjetada < 100) {
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          1,
+          'meta',
+          percentualMetaProjetada < 85 ? 'critica' : 'alta',
+          'Fechamento projetado abaixo da meta mensal',
+          `Projeção atual atinge ${percentualMetaProjetada}% da meta configurada.`,
+          gapMetaProjetada,
+          'Diretoria comercial',
+          'Revisar plano de recuperação da semana, priorizar clientes A/B parados e acompanhar vendedores abaixo da tendência.',
+          'Hoje até 12h',
+        ),
+      );
+    }
+
+    if (crescimentoSemana < 0) {
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          2,
+          'comercial',
+          crescimentoSemana <= -20 ? 'critica' : 'alta',
+          'Semana atual abaixo da semana anterior',
+          `Faturamento semanal varia ${crescimentoSemana}% em relação aos 7 dias anteriores.`,
+          Math.max(faturamentoSemanaAnterior - faturamentoSemana, 0),
+          'Gerência comercial',
+          'Comparar pedidos perdidos por vendedor, clientes sem recompra e produtos com queda de giro.',
+          'Hoje',
+        ),
+      );
+    }
+
+    if (topQuedaVendedorResult.recordset.length) {
+      const vendedor = topQuedaVendedorResult.recordset[0];
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          3,
+          'vendedor',
+          this.toNumber(vendedor.variacao) <= -35 ? 'critica' : 'alta',
+          `Queda relevante em ${vendedor.nomeVendedor}`,
+          `Vendedor caiu ${Math.abs(this.toNumber(vendedor.variacao)).toFixed(1)}% contra a semana anterior.`,
+          this.toNumber(vendedor.impactoEstimado),
+          'Gerente responsável pela carteira',
+          'Abrir carteira do vendedor, ligar para clientes recorrentes sem pedido e revisar mix vendido nos últimos 7 dias.',
+          'Hoje até 16h',
+        ),
+      );
+    }
+
+    if (clienteRiscoResult.recordset.length) {
+      const cliente = clienteRiscoResult.recordset[0];
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          4,
+          'cliente',
+          this.toNumber(cliente.faturamentoHistorico) >= 10000
+            ? 'alta'
+            : 'media',
+          `Cliente relevante sem comprar há ${cliente.diasSemComprar} dias`,
+          `${cliente.nomeCliente} tem histórico recente de compra e está fora da rotina de recompra.`,
+          this.toNumber(cliente.faturamentoHistorico),
+          'Vendedor da carteira',
+          'Priorizar contato com oferta baseada nas últimas categorias compradas e registrar retorno comercial.',
+          'Até amanhã',
+        ),
+      );
+    }
+
+    if (margemMesPercentual > 0 && margemMesPercentual < 15) {
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          5,
+          'margem',
+          margemMesPercentual < 8 ? 'critica' : 'alta',
+          'Margem bruta aproximada abaixo do nível de atenção',
+          `Margem mensal estimada em ${margemMesPercentual}%.`,
+          0,
+          'Diretoria financeira/comercial',
+          'Auditar descontos, famílias vendidas com baixa margem e vendedores com desvio contra a média.',
+          'Hoje',
+        ),
+      );
+    }
+
+    if (!decisoesHoje.length) {
+      decisoesHoje.push(
+        this.buildDecisionItem(
+          1,
+          'crescimento',
+          'baixa',
+          'Sem desvio crítico detectado no cockpit diário',
+          'Indicadores comerciais principais não acionaram gatilhos de risco nesta leitura.',
+          0,
+          'Diretoria',
+          'Manter cadência diária, buscar oportunidades em clientes A/B e acompanhar produtos de maior giro.',
+          'Rotina diária',
+        ),
+      );
+    }
+
+    const criticalAlerts = decisoesHoje.filter((item) =>
+      ['critica', 'alta'].includes(item.severidade),
+    ).length;
+    const status = this.classifyDailyCockpitStatus(
+      metaMensal,
+      percentualMetaProjetada,
+      crescimentoSemana,
+      margemMesPercentual,
+      criticalAlerts,
+    );
+
+    return {
+      faseImplementacao: 'fase-1-cockpit-executivo-diario',
+      generatedAt: new Date().toISOString(),
+      status,
+      headline: this.getDailyCockpitHeadline(status),
+      indicadores: {
+        hoje: {
+          faturamento: faturamentoHoje,
+          pedidos: this.toNumber(resumo.pedidosHoje),
+          clientes: this.toNumber(resumo.clientesHoje),
+          crescimentoVsOntemPercentual: crescimentoHoje,
+        },
+        semana: {
+          faturamento: faturamentoSemana,
+          faturamentoAnterior: faturamentoSemanaAnterior,
+          pedidos: this.toNumber(resumo.pedidosSemana),
+          vendedoresAtivos: this.toNumber(resumo.vendedoresAtivosSemana),
+          crescimentoPercentual: crescimentoSemana,
+        },
+        mes: {
+          faturamento: faturamentoMes,
+          pedidos: this.toNumber(resumo.pedidosMes),
+          clientes: this.toNumber(resumo.clientesMes),
+          lucroBrutoAproximado: lucroMes,
+          margemBrutaPercentual: margemMesPercentual,
+          metaMensal,
+          previsaoFechamentoMes,
+          percentualMetaProjetada,
+          gapMetaProjetada,
+        },
+      },
+      decisoesHoje: decisoesHoje.sort(
+        (a, b) => a.prioridade - b.prioridade,
+      ),
+    };
+  }
+
   async getExecutiveOverview(periodo: number = 30) {
     const dias = this.sanitizeDays(periodo);
     const diasAnterior = dias * 2;

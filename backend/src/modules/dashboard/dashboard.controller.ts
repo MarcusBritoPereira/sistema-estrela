@@ -71,6 +71,14 @@ export class DashboardController {
     return this.dashboardService.getInsightsAutomaticos();
   }
 
+  @Get('daily-decision-cockpit')
+  @ApiOperation({
+    summary: 'Get daily executive cockpit with decision priorities',
+  })
+  async getDailyDecisionCockpit() {
+    return this.dashboardService.getDailyDecisionCockpit();
+  }
+
   @Get('executive-overview')
   @ApiOperation({ summary: 'Get five-pillar executive intelligence overview' })
   @ApiQuery({ name: 'periodo', required: false })
