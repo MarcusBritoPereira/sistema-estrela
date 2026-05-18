@@ -153,6 +153,7 @@ export class DashboardService {
       .request()
       .input('periodo', sql.Int, this.sanitizeDays(periodo)).query(`
       SELECT TOP 10
+        CAST(p.Area AS VARCHAR) AS area,
         ISNULL(a.DESCRICAO, p.Area) AS nomeVendedor,
         COUNT(DISTINCT p.Pedido) AS qtdPedidos,
         ISNULL(SUM(p.ValTotal), 0) AS faturamento,
@@ -169,6 +170,128 @@ export class DashboardService {
     `);
     return result.recordset;
   }
+
+  async getVendorDetails(area: string, periodo: number = 30) {
+    const req = this.pool.request();
+    req.input('area', sql.VarChar, area);
+    req.input('periodo', sql.Int, this.sanitizeDays(periodo));
+
+    // 1. Dados do Vendedor
+    const areaQuery = `
+      SELECT TOP 1
+        CAST(AREA AS VARCHAR) AS area,
+        ISNULL(DESCRICAO, 'Vendedor ' + @area) AS nomeVendedor
+      FROM Area
+      WHERE CAST(AREA AS VARCHAR) = @area
+    `;
+    const areaRes = await req.query(areaQuery);
+    let vendedorInfo = areaRes.recordset[0];
+    if (!vendedorInfo) {
+      vendedorInfo = {
+        area,
+        nomeVendedor: `Vendedor / Rota ${area}`,
+      };
+    }
+
+    // 2. KPIs Comerciais do Vendedor no período
+    const kpisQuery = `
+      SELECT
+        COUNT(DISTINCT p.Pedido) AS qtdPedidos,
+        ISNULL(SUM(p.ValTotal), 0) AS faturamentoTotal,
+        ISNULL(SUM(p.Lucro), 0) AS lucroTotal,
+        COUNT(DISTINCT p.CGCCPF) AS totalClientesAtendidos,
+        MAX(p.DT_Data) AS ultimaVenda
+      FROM Pedido p
+      WHERE CAST(p.Area AS VARCHAR) = @area
+        AND p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+    `;
+    const kpisRes = await req.query(kpisQuery);
+    const kpisData = kpisRes.recordset[0] || {
+      qtdPedidos: 0,
+      faturamentoTotal: 0,
+      lucroTotal: 0,
+      totalClientesAtendidos: 0,
+      ultimaVenda: null,
+    };
+    const fatTotal = this.toNumber(kpisData.faturamentoTotal);
+    const qtdTotal = this.toNumber(kpisData.qtdPedidos);
+    const ticketMedio = qtdTotal > 0 ? fatTotal / qtdTotal : 0;
+
+    // 3. Últimos 50 Pedidos do Vendedor no período
+    const pedidosQuery = `
+      SELECT TOP 50
+        p.Pedido AS pedido,
+        p.DT_Data AS data,
+        p.ValTotal AS valorTotal,
+        CAST(p.CGCCPF AS VARCHAR) AS cgc,
+        ISNULL(c.NOME, CAST(p.CGCCPF AS VARCHAR)) AS nomeCliente,
+        ISNULL(c.CondPag, 'À VISTA') AS condPag,
+        ISNULL(c.PRAZO, '0') AS prazo
+      FROM Pedido p
+      LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
+      WHERE CAST(p.Area AS VARCHAR) = @area
+        AND p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+      ORDER BY p.DT_Data DESC
+    `;
+    const pedidosRes = await req.query(pedidosQuery);
+    const pedidos = pedidosRes.recordset.map((p) => ({
+      pedido: p.pedido,
+      data: p.data,
+      valorTotal: this.toNumber(p.valorTotal),
+      cgc: p.cgc,
+      nomeCliente: p.nomeCliente,
+      condPag: p.condPag,
+      prazo: p.prazo,
+    }));
+
+    // 4. Top 15 Produtos do Vendedor no período
+    const produtosQuery = `
+      SELECT TOP 15
+        i.CodRed AS codProduto,
+        ISNULL(MAX(pr.Descricao), CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
+        ISNULL(MAX(f.Descricao), 'Geral') AS familia,
+        SUM(i.Quantidade) AS quantidade,
+        SUM(i.ValorNegTot) AS valorTotal
+      FROM Itens i
+      INNER JOIN Pedido p ON p.Pedido = i.Pedido
+      LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
+      LEFT JOIN Familia f ON f.Codigo = pr.Familia
+      WHERE CAST(p.Area AS VARCHAR) = @area
+        AND p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+      GROUP BY i.CodRed
+      ORDER BY valorTotal DESC
+    `;
+    const produtosRes = await req.query(produtosQuery);
+    const topProdutos = produtosRes.recordset.map((item) => ({
+      codProduto: item.codProduto,
+      nomeProduto: item.nomeProduto,
+      familia: item.familia,
+      quantidade: this.toNumber(item.quantidade),
+      valorTotal: this.toNumber(item.valorTotal),
+      precoMedio: this.toNumber(item.quantidade) > 0 ? this.toNumber(item.valorTotal) / this.toNumber(item.quantidade) : 0,
+    }));
+
+    return {
+      vendedor: {
+        ...vendedorInfo,
+        faturamentoTotal: fatTotal,
+        qtdPedidos: qtdTotal,
+        ticketMedio,
+        lucroTotal: this.toNumber(kpisData.lucroTotal),
+        totalClientesAtendidos: this.toNumber(kpisData.totalClientesAtendidos),
+        ultimaVenda: kpisData.ultimaVenda,
+      },
+      pedidos,
+      topProdutos,
+    };
+  }
+
 
   async getProdutosMaisVendidos(periodo: number = 30, top: number = 10) {
     const result = await this.pool

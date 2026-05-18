@@ -1,5 +1,5 @@
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import {
@@ -41,6 +41,16 @@ export class DashboardController {
   @ApiQuery({ name: 'periodo', required: false })
   async getRankingVendedores(@Query() query: PeriodoQueryDto) {
     return this.dashboardService.getRankingVendedores(query.periodo);
+  }
+
+  @Get('vendedores/:area')
+  @ApiOperation({ summary: 'Get full vendor details including orders and products' })
+  @ApiQuery({ name: 'periodo', required: false })
+  async getVendorDetails(
+    @Param('area') area: string,
+    @Query() query: PeriodoQueryDto,
+  ) {
+    return this.dashboardService.getVendorDetails(area, query.periodo);
   }
 
   @Get('produtos-mais-vendidos')
