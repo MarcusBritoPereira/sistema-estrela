@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { Briefcase, Search, Loader2, Sparkles, Building2, Calendar, FileText, Box, AlertTriangle, CheckCircle2, XCircle, ArrowUpDown, ExternalLink, X, MapPin, Phone, CreditCard, ShoppingBag, Tag, UserCheck } from "lucide-react";
-import { useTheme } from "@/components/ThemeProvider";
 import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 
 interface TopCustomer {
@@ -114,14 +113,14 @@ export default function CustomersPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get<TopCustomer[]>(
-          `http://localhost:3000/customers?dias=${periodo}&search=${encodeURIComponent(debouncedSearch)}&sortBy=${sortBy}&sortOrder=${sortOrder}`
+        const res = await api.get<TopCustomer[]>(
+          `/customers?dias=${periodo}&search=${encodeURIComponent(debouncedSearch)}&sortBy=${sortBy}&sortOrder=${sortOrder}`
         );
         setCustomers(res.data);
       } catch (err) {
         console.error(err);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setError((err as any).response?.data?.message || "O servidor SQL Server real (100.76.189.43) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
+        setError((err as any).response?.data?.message || "O servidor SQL Server está temporariamente inalcançável. Verifique sua conexão com a VPN ou rede autorizada da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }
@@ -138,7 +137,7 @@ export default function CustomersPage() {
     async function fetchDetails() {
       setDetailsLoading(true);
       try {
-        const res = await axios.get<CustomerDetails>(`http://localhost:3000/customers/${selectedCgc}?dias=${periodo}`);
+        const res = await api.get<CustomerDetails>(`/customers/${selectedCgc}?dias=${periodo}`);
         setCustomerDetails(res.data);
       } catch (err) {
         console.error(err);
@@ -159,7 +158,7 @@ export default function CustomersPage() {
     async function fetchOrder() {
       setOrderLoading(true);
       try {
-        const res = await axios.get<OrderDetailsPayload>(`http://localhost:3000/customers/orders/${selectedOrderId}`);
+        const res = await api.get<OrderDetailsPayload>(`/customers/orders/${selectedOrderId}`);
         setOrderDetails(res.data);
       } catch (err) {
         console.error(err);

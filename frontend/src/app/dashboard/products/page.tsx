@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { Box, Award, Loader2, Sparkles, Filter } from "lucide-react";
 import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 
@@ -26,14 +26,14 @@ export default function ProductsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get<ProdutoMaisVendido[]>(
-          `http://localhost:3000/dashboard/produtos-mais-vendidos?periodo=${periodo}&top=${top}`
+        const res = await api.get<ProdutoMaisVendido[]>(
+          `/dashboard/produtos-mais-vendidos?periodo=${periodo}&top=${top}`
         );
         setProdutos(res.data);
       } catch (err) {
         console.error(err);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
+        setError((err as any).response?.data?.message || "O servidor SQL Server está temporariamente inalcançável. Verifique sua conexão com a VPN ou rede autorizada da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }

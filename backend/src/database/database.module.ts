@@ -5,11 +5,19 @@ dotenv.config();
 import { DatabaseDiscoveryService } from './database-discovery.service';
 import { DatabaseDiscoveryController } from './database-discovery.controller';
 
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 export const getSqlConfig = (): sql.config => ({
-  user: process.env.DB_USER || 'bi_user',
-  password: process.env.DB_PASSWORD || 'Marcu$2603',
-  server: process.env.DB_SERVER || '100.76.189.43',
-  database: process.env.DB_NAME || 'DistribuidoraEstrela',
+  user: getRequiredEnv('DB_USER'),
+  password: getRequiredEnv('DB_PASSWORD'),
+  server: getRequiredEnv('DB_SERVER'),
+  database: getRequiredEnv('DB_NAME'),
   port: parseInt(process.env.DB_PORT || '1433', 10),
   options: {
     encrypt: false,

@@ -5,6 +5,7 @@ import { Building2, RefreshCw, AlertTriangle, CheckCircle2, TrendingUp, ShieldAl
 import { DatabaseErrorAlert } from "@/components/DatabaseErrorAlert";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
+import { api } from "@/lib/api";
 
 interface EmpresaCNPJ {
   deposito: number;
@@ -76,14 +77,8 @@ export default function BillingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:3000/reports/faturamento-cnpj");
-      if (res.status === 503) {
-        setError("503");
-        setLoading(false);
-        return;
-      }
-      if (!res.ok) throw new Error("Falha ao carregar dados de faturamento por CNPJ");
-      const json = await res.json();
+      const res = await api.get("/reports/faturamento-cnpj");
+      const json = res.data;
       setData(json);
 
       const limitsMap: { [key: number]: string } = {};
@@ -105,11 +100,8 @@ export default function BillingPage() {
   const fetchHistory = async (period: string) => {
     setHistoryLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/reports/faturamento-historico?period=${period}`);
-      if (res.ok) {
-        const json = await res.json();
-        setHistoryData(json);
-      }
+      const res = await api.get(`/reports/faturamento-historico?period=${period}`);
+      setHistoryData(res.data);
     } catch (err) {
       console.error("Falha ao carregar histórico", err);
     } finally {
@@ -136,12 +128,7 @@ export default function BillingPage() {
     setSavingLimit((prev) => ({ ...prev, [deposito]: true }));
     setSuccessMsg(null);
     try {
-      const res = await fetch("http://localhost:3000/reports/faturamento-cnpj/limite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deposito, limite: novoLimite }),
-      });
-      if (!res.ok) throw new Error("Erro ao salvar o limite no servidor");
+      await api.post("/reports/faturamento-cnpj/limite", { deposito, limite: novoLimite });
       
       setSuccessMsg("Teto mensal atualizado com sucesso!");
       await fetchData();

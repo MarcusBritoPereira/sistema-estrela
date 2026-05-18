@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import * as sql from 'mssql';
 
@@ -65,13 +66,16 @@ export class CustomersService {
         const fat = this.toNumber(item.faturamento);
         const qtd = this.toNumber(item.qtdPedidos);
         const ticket = qtd > 0 ? fat / qtd : 0;
-        
+
         // Calcular risco simples com base na última compra
         let status = 'Ativo';
-        const diasSemComprar = item.ultimaCompra 
-          ? Math.floor((Date.now() - new Date(item.ultimaCompra).getTime()) / (1000 * 60 * 60 * 24))
+        const diasSemComprar = item.ultimaCompra
+          ? Math.floor(
+              (Date.now() - new Date(item.ultimaCompra).getTime()) /
+                (1000 * 60 * 60 * 24),
+            )
           : 999;
-        
+
         if (diasSemComprar > 60) status = 'Inativo';
         else if (diasSemComprar > 30) status = 'Em Risco';
 
@@ -91,7 +95,10 @@ export class CustomersService {
       });
     } catch (err) {
       console.error('Erro ao buscar top customers:', err);
-      throw new HttpException('Erro ao consultar clientes', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Erro ao consultar clientes',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -124,7 +131,10 @@ export class CustomersService {
       if (!cadastro) {
         cadastro = {
           cgc,
-          nomeCliente: cgc === '0' || cgc === 'BALCÃO' ? 'BALCÃO / CONSUMIDOR FINAL' : `Cliente ${cgc}`,
+          nomeCliente:
+            cgc === '0' || cgc === 'BALCÃO'
+              ? 'BALCÃO / CONSUMIDOR FINAL'
+              : `Cliente ${cgc}`,
           nomeFantasia: '',
           endereco: '--',
           numero: '',
@@ -150,7 +160,12 @@ export class CustomersService {
           AND ValTotal > 0
       `;
       const kpiRes = await req.query(kpiQuery);
-      const kpiData = kpiRes.recordset[0] || { qtdPedidos: 0, faturamentoTotal: 0, ultimaCompra: null, diasSemComprar: 999 };
+      const kpiData = kpiRes.recordset[0] || {
+        qtdPedidos: 0,
+        faturamentoTotal: 0,
+        ultimaCompra: null,
+        diasSemComprar: 999,
+      };
 
       const fatTotal = this.toNumber(kpiData.faturamentoTotal);
       const qtdTotal = this.toNumber(kpiData.qtdPedidos);
@@ -203,7 +218,10 @@ export class CustomersService {
         nomeProduto: item.nomeProduto,
         quantidade: this.toNumber(item.quantidade),
         valorTotal: this.toNumber(item.valorTotal),
-        precoMedio: this.toNumber(item.quantidade) > 0 ? this.toNumber(item.valorTotal) / this.toNumber(item.quantidade) : 0,
+        precoMedio:
+          this.toNumber(item.quantidade) > 0
+            ? this.toNumber(item.valorTotal) / this.toNumber(item.quantidade)
+            : 0,
       }));
 
       return {
@@ -221,7 +239,10 @@ export class CustomersService {
       };
     } catch (err) {
       console.error(`Erro ao buscar detalhes do cliente ${cgc}:`, err);
-      throw new HttpException('Erro ao consultar detalhes do cliente', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Erro ao consultar detalhes do cliente',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -250,7 +271,10 @@ export class CustomersService {
       const pedido = pedidoRes.recordset[0];
 
       if (!pedido) {
-        throw new HttpException(`Pedido #${pedidoId} não encontrado.`, HttpStatus.NOT_FOUND);
+        throw new HttpException(
+          `Pedido #${pedidoId} não encontrado.`,
+          HttpStatus.NOT_FOUND,
+        );
       }
 
       // 2. Itens do Pedido
@@ -290,8 +314,10 @@ export class CustomersService {
     } catch (err) {
       console.error(`Erro ao buscar pedido completo #${pedidoId}:`, err);
       if (err instanceof HttpException) throw err;
-      throw new HttpException('Erro ao consultar detalhes do pedido', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Erro ao consultar detalhes do pedido',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
-

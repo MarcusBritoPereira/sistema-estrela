@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "@/lib/api";
 import { Users, Trophy, Loader2, Sparkles } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
@@ -27,12 +27,12 @@ export default function VendorsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get<RankingVendedor[]>(`http://localhost:3000/dashboard/ranking-vendedores?periodo=${periodo}`);
+        const res = await api.get<RankingVendedor[]>(`/dashboard/ranking-vendedores?periodo=${periodo}`);
         setRanking(res.data);
       } catch (err) {
         console.error(err);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setError((err as any).response?.data?.message || "O servidor SQL Server real (192.168.3.64) está inalcançável. Conecte-se à VPN da Distribuidora Estrela.");
+        setError((err as any).response?.data?.message || "O servidor SQL Server está temporariamente inalcançável. Verifique sua conexão com a VPN ou rede autorizada da Distribuidora Estrela.");
       } finally {
         setLoading(false);
       }
