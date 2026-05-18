@@ -153,20 +153,19 @@ export class DashboardService {
       .request()
       .input('periodo', sql.Int, this.sanitizeDays(periodo)).query(`
       SELECT TOP 10
-        UsuCad AS nomeVendedor,
-        COUNT(DISTINCT Pedido) AS qtdPedidos,
-        ISNULL(SUM(ValTotal), 0) AS faturamento,
-        ISNULL(AVG(ValTotal), 0) AS ticketMedio,
-        ISNULL(SUM(Lucro), 0) AS lucro
-      FROM Pedido
-      WHERE DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
-        AND Situacao = ${SITUACAO_FATURADO}
-        AND ValTotal > 0
-        AND UsuCad IS NOT NULL
-        AND UsuCad != ''
-        AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
-      GROUP BY UsuCad
-      ORDER BY qtdPedidos DESC, faturamento DESC
+        ISNULL(a.DESCRICAO, p.Area) AS nomeVendedor,
+        COUNT(DISTINCT p.Pedido) AS qtdPedidos,
+        ISNULL(SUM(p.ValTotal), 0) AS faturamento,
+        ISNULL(AVG(p.ValTotal), 0) AS ticketMedio,
+        ISNULL(SUM(p.Lucro), 0) AS lucro
+      FROM Pedido p
+      LEFT JOIN Area a ON CAST(a.AREA AS VARCHAR) = CAST(p.Area AS VARCHAR)
+      WHERE p.DT_Data >= DATEADD(DAY, -@periodo, GETDATE())
+        AND p.Situacao = ${SITUACAO_FATURADO}
+        AND p.ValTotal > 0
+        AND p.Area != ''
+      GROUP BY p.Area, a.DESCRICAO
+      ORDER BY faturamento DESC
     `);
     return result.recordset;
   }
