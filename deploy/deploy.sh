@@ -183,15 +183,11 @@ NGINX_LINK_DEST="/etc/nginx/sites-enabled/sistema-estrela"
 # Copiar arquivo de configuração do Nginx do projeto
 cp "$SCRIPT_DIR/nginx.conf" "$NGINX_CONF_DEST"
 
-# Criar link simbólico para ativar o site se não existir
-if [ ! -f "$NGINX_LINK_DEST" ]; then
-  ln -s "$NGINX_CONF_DEST" "$NGINX_LINK_DEST"
-fi
+# Criar link simbólico para ativar o site (forçado para sobrescrever se já existir)
+ln -sf "$NGINX_CONF_DEST" "$NGINX_LINK_DEST"
 
-# Remover o site 'default' do Nginx para evitar conflito de portas
-if [ -f "/etc/nginx/sites-enabled/default" ]; then
-  rm "/etc/nginx/sites-enabled/default"
-fi
+# Remover o site 'default' do Nginx para evitar conflito de portas (forçado)
+rm -f "/etc/nginx/sites-enabled/default"
 
 # Testar e reiniciar Nginx
 nginx -t
