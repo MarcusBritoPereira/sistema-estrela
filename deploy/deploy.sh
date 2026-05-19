@@ -134,12 +134,8 @@ JWT_EXPIRES_IN=24h
 JWT_ACCESS_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=30d
 
-# Bootstrap User Configuration
-AUTH_BOOTSTRAP_ID=marcus-admin
-AUTH_BOOTSTRAP_EMAIL=marcusrodrigo2@gmail.com
-AUTH_BOOTSTRAP_PASSWORD_HASH=\$2b\$12\$1zQCu8bfPEVwsgQpKe0ncuaETZW4XRrAnD/pTDgI1rEuna4cQJ3sa
-AUTH_BOOTSTRAP_NAME=Marcus Rodrigo
-AUTH_BOOTSTRAP_ROLE=ADMIN
+# Multi-User Configuration
+AUTH_USERS_JSON='[{"id":"marcus-admin","email":"marcusrodrigo2@gmail.com","name":"Marcus Rodrigo","role":"ADMIN","passwordHash":"\$2b\$12\$1zQCu8bfPEVwsgQpKe0ncuaETZW4XRrAnD/pTDgI1rEuna4cQJ3sa"},{"id":"quarella-admin","email":"quarella.aq@gmail.com","name":"Quarella","role":"ADMIN","passwordHash":"\$2b\$10\$oHOQYfkL8YXSiwu8saDW0upI5TQkwtPUBZZpC6f8n1zEnvI0ArMcq"}]'
 
 # Configurações de API & Mocks
 FORCE_MOCK=false
