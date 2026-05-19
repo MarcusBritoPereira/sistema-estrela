@@ -44,7 +44,9 @@ export class DashboardController {
   }
 
   @Get('vendedores/:area')
-  @ApiOperation({ summary: 'Get full vendor details including orders and products' })
+  @ApiOperation({
+    summary: 'Get full vendor details including orders and products',
+  })
   @ApiQuery({ name: 'periodo', required: false })
   async getVendorDetails(
     @Param('area') area: string,

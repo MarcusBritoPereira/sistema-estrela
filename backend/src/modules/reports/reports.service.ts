@@ -2,6 +2,14 @@ import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import * as sql from 'mssql';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  MOCK_VENDAS_DIA,
+  MOCK_PRODUTOS_MAIS_VENDIDOS,
+  MOCK_RANKING_VENDEDORES,
+  MOCK_TOP_CUSTOMERS,
+  MOCK_FATURAMENTO_CNPJ,
+  MOCK_FATURAMENTO_HISTORICO,
+} from '../../common/mock/contingency-data';
 
 const SITUACAO_FATURADO = "'2'";
 
@@ -86,22 +94,35 @@ export class ReportsService {
     endDate?: string,
   ) {
     const dateFilter = this.getDateWhereClause('', startDate, endDate);
-    const result = await this.createDateRequest(dias, startDate, endDate)
-      .query(`
-      SELECT
-        CAST(DT_Data AS DATE) AS data,
-        COUNT(DISTINCT Pedido) AS qtdPedidos,
-        ISNULL(SUM(ValTotal), 0) AS faturamento,
-        ISNULL(AVG(ValTotal), 0) AS ticketMedio
-      FROM Pedido
-      WHERE ${dateFilter}
-        AND Situacao = ${SITUACAO_FATURADO}
-        AND ValTotal > 0
-        AND DT_Data IS NOT NULL
-      GROUP BY CAST(DT_Data AS DATE)
-      ORDER BY data DESC
-    `);
-    return result.recordset;
+    try {
+      const result = await this.createDateRequest(dias, startDate, endDate)
+        .query(`
+        SELECT
+          CAST(DT_Data AS DATE) AS data,
+          COUNT(DISTINCT Pedido) AS qtdPedidos,
+          ISNULL(SUM(ValTotal), 0) AS faturamento,
+          ISNULL(AVG(ValTotal), 0) AS ticketMedio
+        FROM Pedido
+        WHERE ${dateFilter}
+          AND Situacao = ${SITUACAO_FATURADO}
+          AND ValTotal > 0
+          AND DT_Data IS NOT NULL
+        GROUP BY CAST(DT_Data AS DATE)
+        ORDER BY data DESC
+      `);
+      return result.recordset;
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getConsolidadoFaturamento:',
+        err,
+      );
+      return MOCK_VENDAS_DIA.map((d) => ({
+        data: new Date(d.data),
+        qtdPedidos: d.qtdPedidos,
+        faturamento: d.faturamento,
+        ticketMedio: d.qtdPedidos > 0 ? d.faturamento / d.qtdPedidos : 0,
+      }));
+    }
   }
 
   async getGiroEstoque(
@@ -110,26 +131,41 @@ export class ReportsService {
     endDate?: string,
   ) {
     const dateFilter = this.getDateWhereClause('p.', startDate, endDate);
-    const result = await this.createDateRequest(dias, startDate, endDate)
-      .query(`
-      SELECT TOP 100
-        i.CodRed AS codProduto,
-        ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
-        ISNULL(f.Descricao, 'Diversos') AS familia,
-        SUM(i.Quantidade) AS qtdVendida,
-        ISNULL(AVG(i.ValorNegUni), 0) AS precoMedio,
-        ISNULL(SUM(i.ValorNegTot), 0) AS faturamento
-      FROM Itens i
-      INNER JOIN Pedido p ON p.Pedido = i.Pedido
-      LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
-      LEFT JOIN Familia f ON f.Codigo = pr.Familia
-      WHERE ${dateFilter}
-        AND p.Situacao = ${SITUACAO_FATURADO}
-        AND i.Quantidade > 0
-      GROUP BY i.CodRed, pr.Descricao, f.Descricao
-      ORDER BY faturamento DESC
-    `);
-    return result.recordset;
+    try {
+      const result = await this.createDateRequest(dias, startDate, endDate)
+        .query(`
+        SELECT TOP 100
+          i.CodRed AS codProduto,
+          ISNULL(pr.Descricao, CAST(i.CodRed AS VARCHAR)) AS nomeProduto,
+          ISNULL(f.Descricao, 'Diversos') AS familia,
+          SUM(i.Quantidade) AS qtdVendida,
+          ISNULL(AVG(i.ValorNegUni), 0) AS precoMedio,
+          ISNULL(SUM(i.ValorNegTot), 0) AS faturamento
+        FROM Itens i
+        INNER JOIN Pedido p ON p.Pedido = i.Pedido
+        LEFT JOIN Produto pr ON pr.CodSim = i.CodRed
+        LEFT JOIN Familia f ON f.Codigo = pr.Familia
+        WHERE ${dateFilter}
+          AND p.Situacao = ${SITUACAO_FATURADO}
+          AND i.Quantidade > 0
+        GROUP BY i.CodRed, pr.Descricao, f.Descricao
+        ORDER BY faturamento DESC
+      `);
+      return result.recordset;
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getGiroEstoque:',
+        err,
+      );
+      return MOCK_PRODUTOS_MAIS_VENDIDOS.map((p) => ({
+        codProduto: p.codProduto,
+        nomeProduto: p.nomeProduto,
+        familia: p.familia,
+        qtdVendida: p.qtdVendida,
+        precoMedio: p.precoMedio,
+        faturamento: p.faturamento,
+      }));
+    }
   }
 
   async getDesempenhoEquipe(
@@ -138,23 +174,36 @@ export class ReportsService {
     endDate?: string,
   ) {
     const dateFilter = this.getDateWhereClause('', startDate, endDate);
-    const result = await this.createDateRequest(dias, startDate, endDate)
-      .query(`
-      SELECT
-        ISNULL(UsuCad, 'NÃO INFORMADO') AS nomeVendedor,
-        COUNT(DISTINCT Pedido) AS qtdPedidos,
-        ISNULL(SUM(ValTotal), 0) AS faturamento,
-        ISNULL(AVG(ValTotal), 0) AS ticketMedio
-      FROM Pedido
-      WHERE ${dateFilter}
-        AND Situacao = ${SITUACAO_FATURADO}
-        AND ValTotal > 0
-        AND UsuCad IS NOT NULL AND UsuCad != ''
-        AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
-      GROUP BY UsuCad
-      ORDER BY qtdPedidos DESC, faturamento DESC
-    `);
-    return result.recordset;
+    try {
+      const result = await this.createDateRequest(dias, startDate, endDate)
+        .query(`
+        SELECT
+          ISNULL(UsuCad, 'NÃO INFORMADO') AS nomeVendedor,
+          COUNT(DISTINCT Pedido) AS qtdPedidos,
+          ISNULL(SUM(ValTotal), 0) AS faturamento,
+          ISNULL(AVG(ValTotal), 0) AS ticketMedio
+        FROM Pedido
+        WHERE ${dateFilter}
+          AND Situacao = ${SITUACAO_FATURADO}
+          AND ValTotal > 0
+          AND UsuCad IS NOT NULL AND UsuCad != ''
+          AND UPPER(UsuCad) NOT IN ('FRONT', 'ALESSANDRO', 'CAROLINA')
+        GROUP BY UsuCad
+        ORDER BY qtdPedidos DESC, faturamento DESC
+      `);
+      return result.recordset;
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getDesempenhoEquipe:',
+        err,
+      );
+      return MOCK_RANKING_VENDEDORES.map((v) => ({
+        nomeVendedor: v.nomeVendedor,
+        qtdPedidos: v.qtdPedidos,
+        faturamento: v.faturamento,
+        ticketMedio: v.ticketMedio,
+      }));
+    }
   }
 
   async getCarteiraClientes(
@@ -163,22 +212,35 @@ export class ReportsService {
     endDate?: string,
   ) {
     const dateFilter = this.getDateWhereClause('p.', startDate, endDate);
-    const result = await this.createDateRequest(dias, startDate, endDate)
-      .query(`
-      SELECT TOP 100
-        ISNULL(NULLIF(MAX(c.NOME), ''), ISNULL(CAST(p.CGCCPF AS VARCHAR), 'BALCÃO / CONSUMIDOR FINAL')) AS documentoCliente,
-        COUNT(DISTINCT p.Pedido) AS qtdPedidos,
-        ISNULL(SUM(p.ValTotal), 0) AS faturamentoTotal,
-        MAX(p.DT_Data) AS dataUltimaCompra
-      FROM Pedido p
-      LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
-      WHERE ${dateFilter}
-        AND p.Situacao = ${SITUACAO_FATURADO}
-        AND p.ValTotal > 0
-      GROUP BY p.CGCCPF
-      ORDER BY faturamentoTotal DESC
-    `);
-    return result.recordset;
+    try {
+      const result = await this.createDateRequest(dias, startDate, endDate)
+        .query(`
+        SELECT TOP 100
+          ISNULL(NULLIF(MAX(c.NOME), ''), ISNULL(CAST(p.CGCCPF AS VARCHAR), 'BALCÃO / CONSUMIDOR FINAL')) AS documentoCliente,
+          COUNT(DISTINCT p.Pedido) AS qtdPedidos,
+          ISNULL(SUM(p.ValTotal), 0) AS faturamentoTotal,
+          MAX(p.DT_Data) AS dataUltimaCompra
+        FROM Pedido p
+        LEFT JOIN cadcli c ON c.CGC2 = p.CGCCPF
+        WHERE ${dateFilter}
+          AND p.Situacao = ${SITUACAO_FATURADO}
+          AND p.ValTotal > 0
+        GROUP BY p.CGCCPF
+        ORDER BY faturamentoTotal DESC
+      `);
+      return result.recordset;
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getCarteiraClientes:',
+        err,
+      );
+      return MOCK_TOP_CUSTOMERS.map((c) => ({
+        documentoCliente: c.nomeCliente,
+        qtdPedidos: c.qtdPedidos,
+        faturamentoTotal: c.faturamento,
+        dataUltimaCompra: new Date(c.ultimaCompra),
+      }));
+    }
   }
 
   private getLimitsFilePath(): string {
@@ -226,68 +288,91 @@ export class ReportsService {
 
   async getFaturamentoCnpj() {
     const limits = this.getStoredLimits();
-    const result = await this.pool.request().query<{
-      Deposito: number;
-      qtdNotas: number;
-      faturamentoMensal: number;
-    }>(`
-      SELECT
-        Deposito,
-        COUNT(*) as qtdNotas,
-        ISNULL(SUM(ValTotal), 0) as faturamentoMensal
-      FROM NFSAIDA
-      WHERE DT_Data >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
-        AND Situacao = '2'
-      GROUP BY Deposito
-    `);
+    try {
+      const result = await this.pool.request().query<{
+        Deposito: number;
+        qtdNotas: number;
+        faturamentoMensal: number;
+      }>(`
+        SELECT
+          Deposito,
+          COUNT(*) as qtdNotas,
+          ISNULL(SUM(ValTotal), 0) as faturamentoMensal
+        FROM NFSAIDA
+        WHERE DT_Data >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
+          AND Situacao = '2'
+        GROUP BY Deposito
+      `);
 
-    const queryMap: Record<number, { faturamento: number; qtd: number }> = {};
-    result.recordset.forEach((r) => {
-      queryMap[r.Deposito] = {
-        faturamento: Number(r.faturamentoMensal || 0),
-        qtd: Number(r.qtdNotas || 0),
-      };
-    });
+      const queryMap: Record<number, { faturamento: number; qtd: number }> = {};
+      result.recordset.forEach((r) => {
+        queryMap[r.Deposito] = {
+          faturamento: Number(r.faturamentoMensal || 0),
+          qtd: Number(r.qtdNotas || 0),
+        };
+      });
 
-    const empresas = Object.keys(COMPANY_MAP).map((k) => {
-      const dep = Number(k);
-      const info = COMPANY_MAP[dep];
-      const fat = queryMap[dep] ? queryMap[dep].faturamento : 0;
-      const qtd = queryMap[dep] ? queryMap[dep].qtd : 0;
-      const limite = limits[dep] || info.defaultLimit;
-      const folegoRestante = Math.max(0, limite - fat);
-      const percentual = limite > 0 ? (fat / limite) * 100 : 0;
+      const empresas = Object.keys(COMPANY_MAP).map((k) => {
+        const dep = Number(k);
+        const info = COMPANY_MAP[dep];
+        const fat = queryMap[dep] ? queryMap[dep].faturamento : 0;
+        const qtd = queryMap[dep] ? queryMap[dep].qtd : 0;
+        const limite = limits[dep] || info.defaultLimit;
+        const folegoRestante = Math.max(0, limite - fat);
+        const percentual = limite > 0 ? (fat / limite) * 100 : 0;
+
+        return {
+          deposito: dep,
+          nome: info.name,
+          cnpj: info.cnpj,
+          faturamentoMensal: fat,
+          qtdNotas: qtd,
+          limiteMensal: limite,
+          folegoRestante: folegoRestante,
+          percentualAtingido: Number(percentual.toFixed(1)),
+        };
+      });
+
+      const faturamentoTotalGrupo = empresas.reduce(
+        (acc, curr) => acc + curr.faturamentoMensal,
+        0,
+      );
+      const folegoTotalGrupo = empresas.reduce(
+        (acc, curr) => acc + curr.folegoRestante,
+        0,
+      );
 
       return {
-        deposito: dep,
-        nome: info.name,
-        cnpj: info.cnpj,
-        faturamentoMensal: fat,
-        qtdNotas: qtd,
-        limiteMensal: limite,
-        folegoRestante: folegoRestante,
-        percentualAtingido: Number(percentual.toFixed(1)),
+        mesAtual: new Date().toLocaleDateString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
+        }),
+        faturamentoTotalGrupo,
+        folegoTotalGrupo,
+        empresas,
       };
-    });
-
-    const faturamentoTotalGrupo = empresas.reduce(
-      (acc, curr) => acc + curr.faturamentoMensal,
-      0,
-    );
-    const folegoTotalGrupo = empresas.reduce(
-      (acc, curr) => acc + curr.folegoRestante,
-      0,
-    );
-
-    return {
-      mesAtual: new Date().toLocaleDateString('pt-BR', {
-        month: 'long',
-        year: 'numeric',
-      }),
-      faturamentoTotalGrupo,
-      folegoTotalGrupo,
-      empresas,
-    };
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getFaturamentoCnpj:',
+        err,
+      );
+      const mock = { ...MOCK_FATURAMENTO_CNPJ };
+      mock.empresas = mock.empresas.map((e) => ({
+        ...e,
+        limiteMensal: limits[e.deposito] || e.limiteMensal,
+        folegoRestante: Math.max(
+          0,
+          (limits[e.deposito] || e.limiteMensal) - e.faturamentoMensal,
+        ),
+        percentualAtingido: Number(
+          (
+            (e.faturamentoMensal / (limits[e.deposito] || e.limiteMensal)) *
+            100
+          ).toFixed(1),
+        ),
+      }));
+      return mock;
+    }
   }
 
   async getFaturamentoHistorico(period: string = '6m') {
@@ -315,70 +400,78 @@ export class ReportsService {
     request.input('startDate', sql.DateTime, startDate);
     if (endDate) request.input('endDate', sql.DateTime, endDate);
 
-    const result = await request.query<{
-      ano: number;
-      mes: number;
-      Deposito: number;
-      qtdNotas: number;
-      faturamento: number;
-    }>(`
-      SELECT
-        YEAR(DT_Data) as ano,
-        MONTH(DT_Data) as mes,
-        Deposito,
-        COUNT(*) as qtdNotas,
-        ISNULL(SUM(ValTotal), 0) as faturamento
-      FROM NFSAIDA
-      WHERE Situacao = '2'
-        AND DT_Data >= @startDate
-        ${endDate ? 'AND DT_Data <= @endDate' : ''}
-      GROUP BY YEAR(DT_Data), MONTH(DT_Data), Deposito
-      ORDER BY ano, mes, Deposito
-    `);
+    try {
+      const result = await request.query<{
+        ano: number;
+        mes: number;
+        Deposito: number;
+        qtdNotas: number;
+        faturamento: number;
+      }>(`
+        SELECT
+          YEAR(DT_Data) as ano,
+          MONTH(DT_Data) as mes,
+          Deposito,
+          COUNT(*) as qtdNotas,
+          ISNULL(SUM(ValTotal), 0) as faturamento
+        FROM NFSAIDA
+        WHERE Situacao = '2'
+          AND DT_Data >= @startDate
+          ${endDate ? 'AND DT_Data <= @endDate' : ''}
+        GROUP BY YEAR(DT_Data), MONTH(DT_Data), Deposito
+        ORDER BY ano, mes, Deposito
+      `);
 
-    const mesesNomes = [
-      'Jan',
-      'Fev',
-      'Mar',
-      'Abr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Set',
-      'Out',
-      'Nov',
-      'Dez',
-    ];
+      const mesesNomes = [
+        'Jan',
+        'Fev',
+        'Mar',
+        'Abr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Set',
+        'Out',
+        'Nov',
+        'Dez',
+      ];
 
-    const mapMeses: Record<string, Record<string, any>> = {};
+      const mapMeses: Record<string, Record<string, any>> = {};
 
-    result.recordset.forEach((r) => {
-      const key = `${mesesNomes[r.mes - 1]}/${r.ano}`;
-      if (!mapMeses[key]) {
-        mapMeses[key] = {
-          mesAno: key,
-          ano: r.ano,
-          mes: r.mes,
-          dep_1_fat: 0,
-          dep_1_qtd: 0,
-          dep_2_fat: 0,
-          dep_2_qtd: 0,
-          dep_3_fat: 0,
-          dep_3_qtd: 0,
-          dep_4_fat: 0,
-          dep_4_qtd: 0,
-          dep_6_fat: 0,
-          dep_6_qtd: 0,
-        };
-      }
-      const dep = Number(r.Deposito);
-      if ([1, 2, 3, 4, 6].includes(dep)) {
-        mapMeses[key][`dep_${dep}_fat`] = Number(r.faturamento || 0);
-        mapMeses[key][`dep_${dep}_qtd`] = Number(r.qtdNotas || 0);
-      }
-    });
+      result.recordset.forEach((r) => {
+        const key = `${mesesNomes[r.mes - 1]}/${r.ano}`;
+        if (!mapMeses[key]) {
+          mapMeses[key] = {
+            mesAno: key,
+            ano: r.ano,
+            mes: r.mes,
+            dep_1_fat: 0,
+            dep_1_qtd: 0,
+            dep_2_fat: 0,
+            dep_2_qtd: 0,
+            dep_3_fat: 0,
+            dep_3_qtd: 0,
+            dep_4_fat: 0,
+            dep_4_qtd: 0,
+            dep_6_fat: 0,
+            dep_6_qtd: 0,
+          };
+        }
+        const dep = Number(r.Deposito);
+        if ([1, 2, 3, 4, 6].includes(dep)) {
+          mapMeses[key][`dep_${dep}_fat`] = Number(r.faturamento || 0);
+          mapMeses[key][`dep_${dep}_qtd`] = Number(r.qtdNotas || 0);
+        }
+      });
 
-    return Object.values(mapMeses);
+      return Object.values(mapMeses);
+    } catch (err) {
+      console.warn(
+        '[Contingência] Banco offline, retornando mock em getFaturamentoHistorico:',
+        err,
+      );
+      return MOCK_FATURAMENTO_HISTORICO;
+    }
   }
 }

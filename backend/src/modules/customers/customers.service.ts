@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import * as sql from 'mssql';
+import {
+  MOCK_TOP_CUSTOMERS,
+  getMockCustomerDetails,
+  getMockOrderDetails,
+} from '../../common/mock/contingency-data';
 
 const SITUACAO_FATURADO = 2;
 
@@ -67,7 +72,6 @@ export class CustomersService {
         const qtd = this.toNumber(item.qtdPedidos);
         const ticket = qtd > 0 ? fat / qtd : 0;
 
-        // Calcular risco simples com base na última compra
         let status = 'Ativo';
         const diasSemComprar = item.ultimaCompra
           ? Math.floor(
@@ -94,11 +98,11 @@ export class CustomersService {
         };
       });
     } catch (err) {
-      console.error('Erro ao buscar top customers:', err);
-      throw new HttpException(
-        'Erro ao consultar clientes',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      console.warn(
+        '[Contingência] Falha de conexão com banco, retornando mock em getTopCustomers:',
+        err,
       );
+      return MOCK_TOP_CUSTOMERS;
     }
   }
 
@@ -108,7 +112,6 @@ export class CustomersService {
     req.input('dias', sql.Int, dias);
 
     try {
-      // 1. Dados Cadastrais
       const cadQuery = `
         SELECT TOP 1
           ID_CAD AS idCad,
@@ -147,7 +150,6 @@ export class CustomersService {
         };
       }
 
-      // 2. KPIs e Resumo Comercial Global (Geral ou últimos dias)
       const kpiQuery = `
         SELECT
           COUNT(DISTINCT Pedido) AS qtdPedidos,
@@ -175,7 +177,6 @@ export class CustomersService {
       if (diasSem > 90) status = 'Inativo';
       else if (diasSem > 45) status = 'Em Risco';
 
-      // 3. Últimos 20 Pedidos
       const pedidosQuery = `
         SELECT TOP 20
           Pedido AS pedido,
@@ -196,7 +197,6 @@ export class CustomersService {
         vendedor: p.vendedor,
       }));
 
-      // 4. Top 15 Produtos Mais Comprados pelo Cliente
       const produtosQuery = `
         SELECT TOP 15
           i.CodRed AS codProduto,
@@ -238,11 +238,11 @@ export class CustomersService {
         topProdutos,
       };
     } catch (err) {
-      console.error(`Erro ao buscar detalhes do cliente ${cgc}:`, err);
-      throw new HttpException(
-        'Erro ao consultar detalhes do cliente',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      console.warn(
+        `[Contingência] Banco offline, retornando mock para cliente ${cgc}:`,
+        err,
       );
+      return getMockCustomerDetails(cgc);
     }
   }
 
@@ -251,7 +251,6 @@ export class CustomersService {
     req.input('pedidoId', sql.Int, pedidoId);
 
     try {
-      // 1. Cabeçalho do Pedido
       const pedidoQuery = `
         SELECT TOP 1
           p.Pedido AS pedido,
@@ -277,7 +276,6 @@ export class CustomersService {
         );
       }
 
-      // 2. Itens do Pedido
       const itensQuery = `
         SELECT
           ROW_NUMBER() OVER(ORDER BY i.ValorNegTot DESC) AS item,
@@ -312,12 +310,11 @@ export class CustomersService {
         itens,
       };
     } catch (err) {
-      console.error(`Erro ao buscar pedido completo #${pedidoId}:`, err);
-      if (err instanceof HttpException) throw err;
-      throw new HttpException(
-        'Erro ao consultar detalhes do pedido',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      console.warn(
+        `[Contingência] Banco offline, retornando mock para pedido #${pedidoId}:`,
+        err,
       );
+      return getMockOrderDetails(pedidoId);
     }
   }
 }

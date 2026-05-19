@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    env_file:
+      - ../backend/.env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - bi-prod-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3001:3000'
+    env_file:
+      - ../frontend/.env.production
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://distribuidoraestrela.cloud/api
+    depends_on:
+      - backend
+    networks:
+      - bi-prod-network
+
+networks:
+  bi-prod-network:
+    driver: bridge

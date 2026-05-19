@@ -33,10 +33,40 @@ export const getSqlConfig = (): sql.config => ({
   },
 });
 
+function createMockPool(config: sql.config) {
+  console.warn(
+    '⚠️ Modo de Proteção / Contingência Instantâneo Ativado. O SQL Server real está inacessível ou FORCE_MOCK=true.',
+  );
+  return {
+    request: () => {
+      const req = {
+        input: function (): unknown {
+          return req;
+        },
+        query: () => {
+          return Promise.reject(
+            new HttpException(
+              `Banco de dados SQL Server real (${config.server}:${config.port}) está inacessível. O sistema está operando no modo de contingência instantâneo com dados espelhados.`,
+              HttpStatus.SERVICE_UNAVAILABLE,
+            ),
+          );
+        },
+      };
+      return req;
+    },
+  } as unknown as sql.ConnectionPool;
+}
+
 const databaseProvider = {
   provide: 'DATABASE_CONNECTION',
   useFactory: async () => {
     const config = getSqlConfig();
+    if (process.env.FORCE_MOCK === 'true') {
+      console.log(
+        '⚠️ FORCE_MOCK ativado. Iniciando pool de conexão simulado em modo contingência instantâneo.',
+      );
+      return createMockPool(config);
+    }
     let retries = 2;
     while (retries > 0) {
       try {
@@ -53,27 +83,7 @@ const databaseProvider = {
           (err as Error).message,
         );
         if (retries === 0) {
-          console.warn(
-            '⚠️ Banco SQL Server inalcançável. Iniciando backend em modo de proteção. Requer conexão com a VPN/Rede.',
-          );
-          return {
-            request: () => {
-              const req = {
-                input: function (): unknown {
-                  return req;
-                },
-                query: () => {
-                  return Promise.reject(
-                    new HttpException(
-                      `Banco de dados SQL Server real (${config.server}:${config.port}) está inacessível. Verifique sua conexão com a VPN ou rede local da Distribuidora Estrela.`,
-                      HttpStatus.SERVICE_UNAVAILABLE,
-                    ),
-                  );
-                },
-              };
-              return req;
-            },
-          };
+          return createMockPool(config);
         }
         await new Promise((r) => setTimeout(r, 2000));
       }
